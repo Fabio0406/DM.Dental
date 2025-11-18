@@ -1,0 +1,140 @@
+<%
+const body = `
+<div class="container-fluid mt-5">
+    <div class="row justify-content-center">
+        <div class="col-xl-8">
+
+            <!-- Cabecera -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1"><i class="bi bi-person-fill-gear text-primary"></i> Mi Perfil</h2>
+                    <p class="text-muted mb-0">Actualiza tus datos personales y contraseña</p>
+                </div>
+                <a href="/dashboard" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Volver al Dashboard
+                </a>
+            </div>
+
+            <!-- Alertas -->
+            ${success ? `<div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle-fill"></i> ${success}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>` : ''}
+            ${error ? `<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i> ${error}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>` : ''}
+
+            <!-- Formulario -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-person-lines-fill text-primary"></i> Información Personal</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/users/profile" id="profileForm">
+                        <div class="row g-4">
+                            <!-- Nombres y Apellidos -->
+                            <div class="col-md-6">
+                                <label for="nombres" class="form-label"><strong>Nombres *</strong></label>
+                                <input type="text" class="form-control form-control-lg" id="nombres" name="nombres" 
+                                       value="${user.nombres}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="apellidos" class="form-label"><strong>Apellidos *</strong></label>
+                                <input type="text" class="form-control form-control-lg" id="apellidos" name="apellidos" 
+                                       value="${user.apellidos}" required>
+                            </div>
+
+                            <!-- Teléfono y Especialidad -->
+                            <div class="col-md-6">
+                                <label for="telefono" class="form-label"><strong>Teléfono</strong></label>
+                                <input type="tel" class="form-control" id="telefono" name="telefono" 
+                                       value="${user.telefono || ''}" placeholder="Ej: 77712345">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="especialidad" class="form-label"><strong>Especialidad</strong></label>
+                                <input type="text" class="form-control" id="especialidad" name="especialidad" 
+                                       value="${user.especialidad || ''}" placeholder="Ej: Odontología General">
+                            </div>
+                        </div>
+
+                        <hr class="my-5">
+
+                        <!-- Datos de Solo Lectura -->
+                        <h6 class="mb-4"><i class="bi bi-lock-fill text-secondary"></i> Información del Sistema (solo lectura)</h6>
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted">Usuario</label>
+                                <input type="text" class="form-control bg-light" value="${user.username}" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted">CI</label>
+                                <input type="text" class="form-control bg-light" value="${user.ci}" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted">Email</label>
+                                <input type="email" class="form-control bg-light" value="${user.email}" readonly>
+                            </div>
+                        </div>
+
+                        <hr class="my-5">
+
+                        <!-- Cambio de Contraseña -->
+                        <h6 class="mb-4"><i class="bi bi-shield-lock-fill text-warning"></i> Cambiar Contraseña (opcional)</h6>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">Nueva Contraseña</label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Mínimo 6 caracteres">
+                                <div class="form-text"><i class="bi bi-info-circle"></i> Deja vacío si no deseas cambiarla</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="confirm_password" class="form-label">Confirmar Contraseña</label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-end with-gap mt-5">
+                            <a href="/dashboard" class="btn btn-outline-secondary btn-lg me-3">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check2-circle"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .with-gap { gap: 1rem; }
+    .form-control[readonly] { background-color: #f8f9fa !important; }
+    .card-header { border-bottom: 1px solid #dee2e6; }
+</style>
+
+<script>
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        const password = document.getElementById('password').value;
+        const confirm = document.getElementById('confirm_password').value;
+        
+        if (password && password.length < 6) {
+            e.preventDefault();
+            alert('La contraseña debe tener al menos 6 caracteres');
+            return;
+        }
+        
+        if (password !== confirm) {
+            e.preventDefault();
+            alert('Las contraseñas no coinciden');
+            return;
+        }
+    });
+</script>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

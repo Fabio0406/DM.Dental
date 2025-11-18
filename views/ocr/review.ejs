@@ -1,0 +1,155 @@
+<% const body = `
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="bi bi-search"></i> Revisar Datos Extraídos</h3>
+        <div>
+          <span class="badge ${formulario.procesado ? 'bg-success' : 'bg-warning'}">
+            ${formulario.procesado ? '<i class="bi bi-check-circle"></i> Procesado' : '<i class="bi bi-hourglass-split"></i> Pendiente'}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Imagen original -->
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h6><i class="bi bi-file-earmark-text"></i> Formulario Original</h6>
+        </div>
+        <div class="card-body text-center">
+          <img src="${formulario.imagen_path}" alt="Formulario SALMI" class="img-fluid border rounded" style="max-height: 400px;">
+          <p class="mt-2 text-muted small">
+            Escaneado: ${formulario.fecha_escaneo ? new Date(formulario.fecha_escaneo).toLocaleString('es-BO') : 'Sin fecha registrada'}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Datos extraídos -->
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between">
+          <h6><i class="bi bi-bar-chart-line"></i> Datos Extraídos por IA</h6>
+          <small class="text-muted">${detalles.length} item(s) detectado(s)</small>
+        </div>
+        <div class="card-body">
+
+          ${!formulario.procesado && detalles.length > 0 ? `
+          <div class="alert alert-info mb-3">
+            <h6><i class="bi bi-info-circle"></i> Procesamiento pendiente</h6>
+            <p class="mb-0">Revisa y confirma los insumos antes de importarlos al Kardex.</p>
+          </div>` : ''}
+
+          ${formulario.procesado ? `
+          <div class="alert alert-success mb-3">
+            <h6><i class="bi bi-check-circle"></i> Formulario procesado</h6>
+            <p class="mb-0">Este formulario ya fue confirmado e importado correctamente.</p>
+          </div>` : ''}
+
+          ${detalles.length > 0 ? `
+          <form method="POST" action="/ocr/confirmar/${formulario.id_formulario}" id="formConfirmar">
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 80px;">Código</th>
+                    <th>Insumo</th>
+                    <th style="width: 70px;">Cant.</th>
+                    <th style="width: 100px;">Lote</th>
+                    <th style="width: 120px;">Vencimiento</th>
+                    <th style="width: 90px;">Costo</th>
+                    <th style="width: 50px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="tablaDetalles">
+                  ${detalles.map((detalle, index) => {
+                    let fechaFormateada = '';
+                    if (detalle.vencimiento) {
+                      try {
+                        const fecha = new Date(detalle.vencimiento);
+                        fecha.setDate(fecha.getDate() + 1);
+                        fechaFormateada = fecha.toISOString().split('T')[0];
+                      } catch (e) {
+                        fechaFormateada = '';
+                      }
+                    }
+
+                    return `
+                    <tr>
+                      <td>
+                        <input type="text" class="form-control form-control-sm" name="codigo_${index}" value="${detalle.codigo || ''}" placeholder="N0111" required>
+                      </td>
+                      <td>
+                        <input type="text" class="form-control form-control-sm" name="nombre_${index}" value="${detalle.nombre || ''}" placeholder="Nombre del insumo" required>
+                      </td>
+                      <td>
+                        <input type="number" class="form-control form-control-sm" name="cantidad_${index}" value="${detalle.cantidad || 1}" min="1" required>
+                      </td>
+                      <td>
+                        <input type="text" class="form-control form-control-sm" name="lote_${index}" value="${detalle.lote || ''}" placeholder="Lote" required>
+                      </td>
+                      <td>
+                        <input type="date" class="form-control form-control-sm" name="vencimiento_${index}" value="${fechaFormateada}" required>
+                      </td>
+                      <td>
+                        <input type="number" step="0.01" class="form-control form-control-sm" name="costo_${index}" value="${detalle.costo || 0}" min="0" placeholder="0.00" required>
+                      </td>
+                      <td>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove(); actualizarTotal()">
+                          <i class="bi bi-x"></i>
+                        </button>
+                      </td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <input type="hidden" name="total_items" id="total_items" value="${detalles.length}">
+
+            <div class="d-flex gap-2 justify-content-end mt-3">
+              <a href="/ocr" class="btn btn-outline-secondary"><i class="bi bi-journal-text"></i> Ver formularios</a>
+              <button type="button" class="btn btn-primary" onclick="agregarFila()"><i class="bi bi-plus"></i> Agregar</button>
+              ${!formulario.procesado ? `<button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Confirmar e Importar</button>` : ''}
+            </div>
+          </form>` : `
+          <div class="alert alert-warning">
+            <h6><i class="bi bi-exclamation-triangle"></i> No se detectaron insumos</h6>
+            <a href="/ocr/upload" class="btn btn-primary mt-2"><i class="bi bi-camera"></i> Intentar con otra imagen</a>
+          </div>`}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let contadorFilas = detalles.length;
+  function actualizarTotal() {
+    const filas = document.querySelectorAll('#tablaDetalles tr');
+    document.getElementById('total_items').value = filas.length;
+  }
+
+  function agregarFila() {
+    const tbody = document.getElementById('tablaDetalles');
+    const row = document.createElement('tr');
+    row.innerHTML =
+      '<td><input type="text" class="form-control form-control-sm" name="codigo_' + contadorFilas + '" required></td>' +
+      '<td><input type="text" class="form-control form-control-sm" name="nombre_' + contadorFilas + '" required></td>' +
+      '<td><input type="number" class="form-control form-control-sm" name="cantidad_' + contadorFilas + '" value="1" min="1" required></td>' +
+      '<td><input type="text" class="form-control form-control-sm" name="lote_' + contadorFilas + '" required></td>' +
+      '<td><input type="date" class="form-control form-control-sm" name="vencimiento_' + contadorFilas + '" required></td>' +
+      '<td><input type="number" step="0.01" class="form-control form-control-sm" name="costo_' + contadorFilas + '" placeholder="100.00" required></td>' +
+      '<td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest(\'tr\').remove(); actualizarTotal()"><i class="bi bi-x"></i></button></td>';
+    tbody.appendChild(row);
+    contadorFilas++;
+    actualizarTotal();
+  }
+</script>
+`; %>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

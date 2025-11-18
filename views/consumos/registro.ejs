@@ -1,0 +1,238 @@
+<% const body = `
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h3><i class="bi bi-pencil-square"></i> Registrar Consumo de Insumos</h3>
+            <p class="text-muted">Selecciona el tipo de servicio y ajusta las aplicaciones según el protocolo</p>
+        </div>
+    </div>
+
+    ${success ? `<div class="alert alert-success alert-dismissible fade show">
+        ${success}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>` : ''}
+
+    ${error ? `<div class="alert alert-danger alert-dismissible fade show">
+        ${error}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>` : ''}
+
+    <form method="POST" action="/consumos/registro" id="consumoForm">
+        <input type="hidden" name="insumos" id="hidden_insumos">
+        <input type="hidden" name="numero_recibo" id="hidden_numero_recibo">
+
+        <!-- PANEL SUPERIOR -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <label for="id_tipo_servicio" class="form-label fw-bold"><i class="bi bi-hospital"></i> Tipo de Servicio: *</label>
+                                <select class="form-select form-select-lg" id="id_tipo_servicio" name="id_tipo_servicio"
+                                    required>
+                                    <option value="">Seleccionar servicio...</option>
+                                    ${tiposServicio.map(ts => `<option value="${ts.id_servicio}">${ts.nombre}
+                                    </option>`).join('')}
+                                </select>
+                                <small class="text-muted">Se cargarán las aplicaciones estándar del protocolo</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div id="disponibilidad_alert"></div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="d-flex justify-content-end gap-2 align-items-center">
+                                    <span id="total_aplicaciones" class="badge bg-primary"
+                                        style="font-size: 16px; padding: 10px 20px;">0 insumos</span>
+                                    <a href="/dashboard" class="btn btn-outline-secondary">Cancelar</a>
+                                    <button type="button" class="btn btn-success btn-lg" id="btn_guardar"
+                                        onclick="mostrarModalRecibo()" disabled><i class="bi bi-save"></i> Registrar Consumo</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL PRINCIPAL -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-journal-text"></i> Protocolo de Insumos</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="protocolo_mensaje" class="text-center text-muted py-5">
+                            <h5><i class="bi bi-hand-index"></i> Selecciona un tipo de servicio</h5>
+                            <p>Se cargarán automáticamente los insumos del protocolo</p>
+                        </div>
+                        <div id="protocolo_container" style="display: none;">
+                            <div class="alert alert-info mb-3">
+                                <small><strong><i class="bi bi-lightbulb"></i> Protocolo cargado:</strong> Las cantidades son aplicaciones teóricas.
+                                    Ajusta según necesidad.</small>
+                            </div>
+                            <div class="row g-3" id="protocolo_grid"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Modal: Número de Recibo -->
+    <div class="modal fade" id="reciboModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-journal-text"></i> Número de Recibo Recetario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="numero_recibo_input" class="form-label">Ingrese el número del recibo: *</label>
+                        <input type="text" class="form-control" id="numero_recibo_input" placeholder="Ej: REC-001-2025"
+                            required>
+                        <small class="text-muted">Este número se registrará en el Kardex</small>
+                    </div>
+                    <div id="resumen_consumo" class="alert alert-light"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="confirmarConsumo()"><i class="bi bi-check-circle"></i> Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Agotado -->
+    <div class="modal fade" id="agotadoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-x-octagon"></i> Confirmar Lote Agotado</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong id="agotado_insumo_nombre"></strong></p>
+                    <p>Lote: <strong id="agotado_lote_numero"></strong></p>
+                    <input type="hidden" id="agotado_lote_id">
+                    <div class="mb-3">
+                        <label class="form-label">Motivo:</label>
+                        <textarea class="form-control" id="motivo_agotado" rows="2"
+                            placeholder="Ej: Derramado, vencido, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmarAgotado()"><i class="bi bi-check-circle"></i> Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Verificar Sobrantes -->
+    <div class="modal fade" id="verificarSobrantesModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Verificación de Sobrantes</h5>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Los siguientes lotes se agotaron durante este consumo. ¿Quedó producto sobrante
+                            físicamente?</strong></p>
+                    <div id="sobrantes_list_dinamico"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="guardarAjustesSobrantes()"><i class="bi bi-save"></i> Guardar y
+                        Continuar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/consumo-registro.js"></script>
+    </div>
+    `;
+    %>
+
+    <% if (locals.lotes_agotados && locals.lotes_agotados.length > 0) { %>
+        <script type="application/json" id="lotes-agotados-data">
+        <%- JSON.stringify(locals.lotes_agotados) %>
+    </script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const dataElement = document.getElementById('lotes-agotados-data');
+                const lotesAgotados = JSON.parse(dataElement.textContent);
+                mostrarModalSobrantes(lotesAgotados);
+            });
+
+            function mostrarModalSobrantes(lotes) {
+                const container = document.getElementById('sobrantes_list_dinamico');
+                container.innerHTML = '';
+
+                lotes.forEach(lote => {
+                    const card = document.createElement('div');
+                    card.className = 'card mb-3';
+                    card.innerHTML = '<div class="card-body">' +
+                        '<h6>' + lote.nombre_generico + '</h6>' +
+                        '<p class="mb-2"><strong>Lote:</strong> ' + lote.numero_lote + '<br><strong>Presentación física:</strong> ' + lote.cantidad_fisica + ' unidad(es)</p>' +
+                        '<div class="mb-2"><label class="form-label">¿Quedó sobrante de este lote?</label>' +
+                        '<div class="btn-group w-100" role="group">' +
+                        '<input type="radio" class="btn-check" name="sobrante_' + lote.id_lote + '" id="si_' + lote.id_lote + '" value="si">' +
+                        '<label class="btn btn-outline-success" for="si_' + lote.id_lote + '">Sí, sobró</label>' +
+                        '<input type="radio" class="btn-check" name="sobrante_' + lote.id_lote + '" id="no_' + lote.id_lote + '" value="no" checked>' +
+                        '<label class="btn btn-outline-danger" for="no_' + lote.id_lote + '">No, se agotó</label>' +
+                        '</div></div>' +
+                        '<div id="cantidad_sobrante_' + lote.id_lote + '" style="display: none;">' +
+                        '<label class="form-label">¿Cuántas aplicaciones sobraron?</label>' +
+                        '<input type="number" class="form-control" min="1" id="aplicaciones_' + lote.id_lote + '" placeholder="Ej: 5">' +
+                        '</div></div>';
+
+                    container.appendChild(card);
+
+                    document.getElementById('si_' + lote.id_lote).addEventListener('change', function () {
+                        document.getElementById('cantidad_sobrante_' + lote.id_lote).style.display = 'block';
+                    });
+                    document.getElementById('no_' + lote.id_lote).addEventListener('change', function () {
+                        document.getElementById('cantidad_sobrante_' + lote.id_lote).style.display = 'none';
+                    });
+                });
+
+                new bootstrap.Modal(document.getElementById('verificarSobrantesModal')).show();
+            }
+
+            async function guardarAjustesSobrantes() {
+                const dataElement = document.getElementById('lotes-agotados-data');
+                const lotesAgotados = JSON.parse(dataElement.textContent);
+
+                for (const lote of lotesAgotados) {
+                    const tieneSobrante = document.getElementById('si_' + lote.id_lote).checked;
+                    const aplicaciones = tieneSobrante ? parseInt(document.getElementById('aplicaciones_' + lote.id_lote).value) || 0 : 0;
+
+                    try {
+                        const fetchHeaders = new Headers();
+                        fetchHeaders.append('Content-Type', 'application/json');
+
+                        await fetch('/consumos/api/ajuste', {
+                            method: 'POST',
+                            headers: fetchHeaders,
+                            body: JSON.stringify({
+                                id_lote: lote.id_lote,
+                                aplicaciones_sobrantes: aplicaciones,
+                                motivo: tieneSobrante ? 'Verificación post-consumo: sobrante' : 'Verificación post-consumo: agotado'
+                            })
+                        });
+                    } catch (error) {
+                        console.error('Error guardando ajuste:', error);
+                    }
+                }
+
+                alert('Ajustes registrados correctamente');
+                location.reload();
+            }
+        </script>
+        <% } %>
+
+            <%- include('../layouts/main', { title: title, body: body }) %>

@@ -1,0 +1,164 @@
+<%
+const imagenPrincipal = paciente.imagenes && paciente.imagenes.length > 0 
+    ? (paciente.imagenes.find(img => img.es_principal) || paciente.imagenes[0])
+    : null;
+
+const body = `
+<div class="container-fluid mt-5">
+    <div class="row justify-content-center">
+        <div class="col-xl-11">
+
+            <!-- Mensaje de alerta -->
+            ${mensaje ? `
+                <div class="alert alert-${mensaje.tipo} alert-dismissible fade show">
+                    <i class="bi bi-${mensaje.tipo === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i> ${mensaje.texto}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            ` : ''}
+
+            <!-- Cabecera: Título + Acciones -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1"><i class="bi bi-person-circle text-primary"></i> Perfil del Paciente</h2>
+                    <p class="text-muted mb-0">Información completa y historial de proyecciones dentales</p>
+                </div>
+                <div class="btn-group">
+                    <a href="/pacientes" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Volver a pacientes
+                    </a>
+                    <a href="/pacientes/${paciente.ci}/editar" class="btn btn-warning">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                    <a href="/proyecciones/nueva?paciente_id=${paciente.id}" class="btn btn-success">
+                        <i class="bi bi-tooth"></i> Nueva Proyección
+                    </a>
+                </div>
+            </div>
+
+            <!-- Perfil: Grid moderno -->
+            <div class="row g-4">
+                <!-- Sidebar: Foto + Info Personal -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4 text-center">
+                            <!-- Foto del paciente -->
+                            <div class="position-relative d-inline-block mb-4">
+                                ${imagenPrincipal 
+                                    ? `<img src="${imagenPrincipal.ruta_imagen}" alt="Foto del paciente" class="img-fluid rounded-circle shadow-sm" style="width: 180px; height: 180px; object-fit: cover;">`
+                                    : `<div class="bg-light rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 180px; height: 180px;">
+                                        <i class="bi bi-person fs-1 text-muted"></i>
+                                       </div>`
+                                }
+                                ${imagenPrincipal ? `<span class="position-absolute bottom-0 end-0 badge rounded-pill bg-success"><i class="bi bi-check"></i></span>` : ''}
+                            </div>
+
+                            <!-- Nombre completo -->
+                            <h4 class="mb-3">${paciente.nombres} ${paciente.apellidos}</h4>
+
+                            <!-- Info en tarjetas pequeñas -->
+                            <div class="row g-2 text-start">
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between p-3 bg-light rounded">
+                                        <strong><i class="bi bi-card-text text-primary"></i> CI:</strong>
+                                        <span class="fw-bold">${paciente.ci}</span>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between p-3 bg-light rounded">
+                                        <strong><i class="bi bi-calendar-event text-primary"></i> Edad:</strong>
+                                        <span>${paciente.edad} años</span>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between p-3 bg-light rounded">
+                                        <strong><i class="bi bi-gender-${paciente.sexo === 'M' ? 'male' : 'female'} text-primary"></i> Sexo:</strong>
+                                        <span>${paciente.sexo === 'M' ? 'Masculino' : 'Femenino'}</span>
+                                    </div>
+                                </div>
+                                ${paciente.telefono ? `
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between p-3 bg-light rounded">
+                                        <strong><i class="bi bi-telephone text-primary"></i> Teléfono:</strong>
+                                        <span>${paciente.telefono}</span>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                ${paciente.direccion ? `
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between p-3 bg-light rounded">
+                                        <strong><i class="bi bi-geo-alt text-primary"></i> Dirección:</strong>
+                                        <span>${paciente.direccion}</span>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between p-3 bg-light rounded">
+                                        <strong><i class="bi bi-calendar-plus text-primary"></i> Registro:</strong>
+                                        <span>${new Date(paciente.created_at).toLocaleDateString('es-BO')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contenido principal: Historial de proyecciones -->
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-journal-medical"></i> Historial de Proyecciones Dentales</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            ${paciente.proyecciones && paciente.proyecciones.length > 0 ? `
+                                <div class="row g-4">
+                                    ${paciente.proyecciones.map(proyeccion => `
+                                        <div class="col-md-6">
+                                            <div class="card h-100 border-0 shadow-sm">
+                                                <div class="position-relative">
+                                                    <img src="../${proyeccion.ruta_proyeccion}" alt="Proyección ${proyeccion.tipo_tratamiento}" class="card-img-top" style="height: 180px; object-fit: cover;">
+                                                    <span class="position-absolute top-0 end-0 m-2 badge rounded-pill bg-${proyeccion.tipo_tratamiento === 'ortodoncia' ? 'info' : 'purple'}">
+                                                        ${proyeccion.tipo_tratamiento.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                                <div class="card-body p-3">
+                                                    <div class="row g-2 small">
+                                                        <div class="col-6"><strong>Intensidad:</strong></div>
+                                                        <div class="col-6 text-end">${proyeccion.parametros_ia.tratamiento.intensidad}%</div>
+                                                        <div class="col-6"><strong>Fecha:</strong></div>
+                                                        <div class="col-6 text-end">${new Date(proyeccion.fecha_generacion).toLocaleDateString('es-BO')}</div>
+                                                        
+                                                    </div>
+                                                </div>
+                                                <div class="card-footer bg-light d-flex gap-2">
+                                                    <a href="/proyecciones/${proyeccion.id_proyeccion}" class="btn btn-sm btn-outline-primary flex-fill">
+                                                        <i class="bi bi-eye"></i> Ver
+                                                    </a>
+                                                    <a href="/proyecciones/${proyeccion.id_proyeccion}/descargar" class="btn btn-sm btn-success flex-fill">
+                                                        <i class="bi bi-download"></i> Descargar
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <div class="text-center py-5">
+                                    <i class="bi bi-tooth fs-1 text-muted d-block mb-3"></i>
+                                    <h5 class="text-muted">No hay proyecciones aún</h5>
+                                    <p class="text-muted">Este paciente no tiene proyecciones generadas.</p>
+                                    <a href="/proyecciones/nueva?paciente_id=${paciente.id}" class="btn btn-primary mt-3">
+                                        <i class="bi bi-plus-circle"></i> Generar Primera Proyección
+                                    </a>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

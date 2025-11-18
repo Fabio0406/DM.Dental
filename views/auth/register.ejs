@@ -1,0 +1,116 @@
+<% 
+const body = `
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card mt-4">
+                <div class="card-header text-center">
+                    <h3><i class="bi bi-hospital"></i> Sistema DM-5</h3>
+                    <p class="mb-0">Registro de Odontólogo</p>
+                </div>
+                <div class="card-body">
+                    ${error ? `<div class="alert alert-danger">${error}</div>` : ''}
+                    
+                    <form method="POST" action="/auth/register">
+                        <!-- Datos de cuenta -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Usuario: *</label>
+                                    <input type="text" class="form-control" id="username" name="username" required>
+                                    <small class="text-muted">Solo letras, números y puntos</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email: *</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Contraseña: *</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <small class="text-muted">Mínimo 6 caracteres</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="confirm_password" class="form-label">Confirmar Contraseña: *</label>
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Datos personales -->
+                        <h6><i class="bi bi-person"></i> Datos Personales</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nombres" class="form-label">Nombres: *</label>
+                                    <input type="text" class="form-control" id="nombres" name="nombres" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="apellidos" class="form-label">Apellidos: *</label>
+                                    <input type="text" class="form-control" id="apellidos" name="apellidos" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="ci" class="form-label">CI: *</label>
+                                    <input type="text" class="form-control" id="ci" name="ci" required>
+                                    <small class="text-muted">7-8 dígitos</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="telefono" class="form-label">Teléfono:</label>
+                                    <input type="tel" class="form-control" id="telefono" name="telefono">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="especialidad" class="form-label">Especialidad:</label>
+                                    <select class="form-control" id="especialidad" name="especialidad">
+                                        <option value="Odontología General">Odontología General</option>
+                                        <option value="Ortodoncia">Ortodoncia</option>
+                                        <option value="Endodoncia">Endodoncia</option>
+                                        <option value="Periodoncia">Periodoncia</option>
+                                        <option value="Cirugía Oral">Cirugía Oral</option>
+                                        <option value="Odontopediatría">Odontopediatría</option>
+                                        <option value="Prostodoncia">Prostodoncia</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="numero_licencia" class="form-label">Número de Licencia Profesional: *</label>
+                            <input type="text" class="form-control" id="numero_licencia" name="numero_licencia" required>
+                            <small class="text-muted">Ej: ODT-2024-001</small>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">Registrarse</button>
+                            <a href="/auth/login" class="btn btn-outline-secondary">¿Ya tienes cuenta? Iniciar Sesión</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

@@ -1,0 +1,174 @@
+<% 
+const body = `
+<div class="container">
+    <div class="page-header">
+        <h1>Generar Proyección Dental</h1>
+        <a href="/pacientes" class="btn btn-secondary">← Volver</a>
+    </div>
+
+    <div class="wizard-steps" style="display: flex; justify-content: space-between; margin: 2rem 0; padding: 0 2rem;">
+        <div class="step active" id="indicator1" style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+            <div class="step-number" style="width: 40px; height: 40px; border-radius: 50%; background: #007bff; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 0.5rem;">1</div>
+            <div class="step-label">Seleccionar Paciente</div>
+        </div>
+        <div class="step" id="indicator2" style="flex: 1; display: flex; flex-direction: column; align-items: center; opacity: 0.5;">
+            <div class="step-number" style="width: 40px; height: 40px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 0.5rem;">2</div>
+            <div class="step-label">Configurar Tratamiento</div>
+        </div>
+        <div class="step" id="indicator3" style="flex: 1; display: flex; flex-direction: column; align-items: center; opacity: 0.5;">
+            <div class="step-number" style="width: 40px; height: 40px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 0.5rem;">3</div>
+            <div class="step-label">Ver Proyecciones</div>
+        </div>
+        <div class="step" id="indicator4" style="flex: 1; display: flex; flex-direction: column; align-items: center; opacity: 0.5;">
+            <div class="step-number" style="width: 40px; height: 40px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 0.5rem;">4</div>
+            <div class="step-label">Guardar Selección</div>
+        </div>
+    </div>
+
+    <div id="step1" style="display: block;">
+        <div class="form-section">
+            <h3>Paso 1: Buscar Paciente</h3>
+            
+            <div class="form-group">
+                <label for="searchPaciente">Buscar por CI o Nombre</label>
+                <input type="text" id="searchPaciente" class="form-control" placeholder="Ingrese CI o nombre del paciente" ` + (paciente ? `value="${paciente.ci} - ${paciente.nombres} ${paciente.apellidos}"` : '') + `>
+            </div>
+
+            <div id="pacientesResults" class="search-results">
+                ` + (paciente ? `
+                    <div class="paciente-selected" style="padding: 1.5rem; border: 2px solid #28a745; border-radius: 8px; background: #f0fff4; display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                        <div class="paciente-info" style="display: flex; flex-direction: column;">
+                            <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;">${paciente.nombres} ${paciente.apellidos}</strong>
+                            <span style="color: #666; font-size: 0.9rem;">CI: ${paciente.ci}</span>
+                        </div>
+                        <input type="hidden" id="paciente_ci" value="${paciente.ci}">
+                        <button type="button" class="btn btn-primary" onclick="irPaso2()">Continuar →</button>
+                    </div>
+                ` : '') + `
+            </div>
+        </div>
+    </div>
+
+    <div id="step2" style="display: none; background: white; padding: 2rem; border-radius: 8px; min-height: 400px;">
+        <form id="formProyeccion" enctype="multipart/form-data">
+            <div class="form-section">
+                <h3>Paso 2: Configurar Tratamiento</h3>
+                
+                <div class="form-group" style="margin-top: 2rem;">
+                    <label style="font-weight: bold; margin-bottom: 1rem; display: block;">Tipo de Tratamiento *</label>
+                    <div class="tratamiento-options" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                        <label class="tratamiento-card" style="border: 2px solid #ddd; border-radius: 8px; padding: 1.5rem; cursor: pointer; transition: all 0.3s; background: white;">
+                            <input type="radio" name="tipo_tratamiento" value="ortodoncia" required style="display: none;">
+                            <div class="card-content" style="text-align: center;">
+                                <div class="icon" style="font-size: 3rem; margin-bottom: 1rem;">🦷</div>
+                                <h4 style="margin-bottom: 0.5rem;">Ortodoncia</h4>
+                                <p style="color: #666; font-size: 0.9rem;">Alineación dental con brackets</p>
+                            </div>
+                        </label>
+                        
+                        <label class="tratamiento-card" style="border: 2px solid #ddd; border-radius: 8px; padding: 1.5rem; cursor: pointer; transition: all 0.3s; background: white;">
+                            <input type="radio" name="tipo_tratamiento" value="carillas" required style="display: none;">
+                            <div class="card-content" style="text-align: center;">
+                                <div class="icon" style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
+                                <h4 style="margin-bottom: 0.5rem;">Carillas Dentales</h4>
+                                <p style="color: #666; font-size: 0.9rem;">Perfeccionamiento estético</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 2rem;">
+                    <label style="font-weight: bold; margin-bottom: 1rem; display: block;">Imagen del Paciente</label>
+                    <div class="image-source-options" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <label style="padding: 0.75rem; border: 2px solid #007bff; border-radius: 4px; cursor: pointer; background: #f0f8ff;">
+                            <input type="radio" name="usar_imagen_existente" value="true" checked> Usar imagen existente del paciente
+                        </label>
+                        <label style="padding: 0.75rem; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                            <input type="radio" name="usar_imagen_existente" value="false"> Subir nueva imagen
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="uploadImageGroup" style="display: none; margin-top: 1.5rem;">
+                    <label for="imagen" style="font-weight: bold; margin-bottom: 0.5rem; display: block;">Subir Nueva Imagen</label>
+                    <input type="file" id="imagen" name="imagen" class="form-control" accept="image/jpeg,image/jpg,image/png,image/webp" onchange="previsualizarImagen(event)">
+                    <small class="form-text" style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;">📸 Recomendación: Foto frontal de sonrisa con buena iluminación</small>
+                    <div id="imagePreview" class="image-preview" style="display: none; margin-top: 1rem; text-align: center;">
+                        <img id="previewImg" src="" alt="Vista previa" style="max-width: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    </div>
+                </div>
+
+                <div class="form-actions" style="margin-top: 2rem; display: flex; gap: 1rem; padding-top: 2rem; border-top: 1px solid #eee;">
+                    <button type="button" class="btn btn-secondary" onclick="volverPaso1()">← Volver</button>
+                    <button type="button" class="btn btn-primary" onclick="generarProyecciones()">🎯 Generar Proyecciones</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div id="step3" style="display: none; background: white; padding: 2rem; border-radius: 8px;">
+        <div class="form-section">
+            <h3>Paso 3: Selecciona tu Proyección Favorita</h3>
+            <p class="text-muted">Se generaron 3 variaciones con diferentes intensidades. Elige la que más te guste.</p>
+
+            <div id="loadingProyecciones" class="loading-state" style="text-align: center; padding: 3rem; display: block;">
+                <div class="spinner" style="border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p>Generando proyecciones dentales...</p>
+                <small>Esto puede tomar unos segundos</small>
+            </div>
+
+            <div id="proyeccionesGrid" class="proyecciones-compare" style="display: none; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin: 2rem 0;"></div>
+
+            <div class="form-actions" id="step3Actions" style="display: none; margin-top: 2rem; gap: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="cancelarProyecciones()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="irPaso4()" disabled id="btnContinuar">Continuar con Selección →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="step4" style="display: none; background: white; padding: 2rem; border-radius: 8px;">
+        <form id="formGuardar">
+            <div class="form-section">
+                <h3>Paso 4: Confirmar y Guardar</h3>
+                
+                <div class="proyeccion-selected-preview" style="margin-bottom: 2rem;">
+                    <h4>Proyección Seleccionada</h4>
+                    <div id="selectedPreview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="diagnostico">Diagnóstico *</label>
+                    <textarea id="diagnostico" name="diagnostico" class="form-control" rows="4" required placeholder="Descripción del diagnóstico dental..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="duracion_estimada">Duración Estimada del Tratamiento *</label>
+                    <input type="text" id="duracion_estimada" name="duracion_estimada" class="form-control" required placeholder="Ej: 18-24 meses">
+                </div>
+
+                <div class="form-actions" style="margin-top: 2rem; display: flex; gap: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="volverPaso3()">← Volver</button>
+                    <button type="submit" class="btn btn-success btn-lg">💾 Guardar Proyección</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="/js/proyecciones.js"></script>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.tratamiento-card:hover { 
+    border-color: #007bff !important; 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

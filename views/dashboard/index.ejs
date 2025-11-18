@@ -1,0 +1,456 @@
+<% const body = `
+<div class="container-fluid px-4 py-2">
+    <!-- Bienvenida -->
+    <div class="mb-2">
+        <h5 class="mb-0 text-white"><i data-lucide="user-circle"></i> Bienvenido, ${user.nombres} ${user.apellidos}</h5>
+    </div>
+
+    ${stats ? `
+    <!-- Tarjetas de estadísticas generales -->
+    <div class="row g-2 mb-2">
+        <div class="col">
+            <div class="card dm5-stat-card dm5-stat-neutral">
+                <div class="card-body p-2">
+                    <div class="d-flex align-items-center">
+                        <i data-lucide="package" style="width: 24px; height: 24px; color: #64748b;"></i>
+                        <div class="ms-2">
+                            <div class="small text-muted lh-1">Total Insumos</div>
+                            <h5 class="mb-0 fw-bold">${stats.total_insumos}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card dm5-stat-card dm5-stat-success">
+                <div class="card-body p-2">
+                    <div class="d-flex align-items-center">
+                        <i data-lucide="check-circle" style="width: 24px; height: 24px; color: #22c55e;"></i>
+                        <div class="ms-2">
+                            <div class="small text-muted lh-1">En Stock</div>
+                            <h5 class="mb-0 fw-bold">${stats.en_stock}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card dm5-stat-card dm5-stat-warning">
+                <div class="card-body p-2">
+                    <div class="d-flex align-items-center">
+                        <i data-lucide="alert-triangle" style="width: 24px; height: 24px; color: #f59e0b;"></i>
+                        <div class="ms-2">
+                            <div class="small text-muted lh-1">Alertas</div>
+                            <h5 class="mb-0 fw-bold">${resumenAlertas.total}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card dm5-stat-card dm5-stat-info">
+                <div class="card-body p-2">
+                    <div class="d-flex align-items-center">
+                        <i data-lucide="sparkles" style="width: 24px; height: 24px; color: #3b82f6;"></i>
+                        <div class="ms-2">
+                            <div class="small text-muted lh-1">Proyecciones Hoy</div>
+                            <h5 class="mb-0 fw-bold">${stats.proyecciones_hoy}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card dm5-stat-card dm5-stat-secondary">
+                <div class="card-body p-2">
+                    <div class="d-flex align-items-center">
+                        <i data-lucide="trending-up" style="width: 24px; height: 24px; color: #71717a;"></i>
+                        <div class="ms-2">
+                            <div class="small text-muted lh-1">Consumo Mes</div>
+                            <h5 class="mb-0 fw-bold">${stats.consumo_mes}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs en grid optimizado -->
+    <div class="row g-2 mb-2">
+        <div class="col-12">
+            <h6 class="mb-1 text-white"><i data-lucide="bar-chart-3"></i> KPIs de Gestión de Inventario</h6>
+        </div>
+
+        <!-- Tasa de Desabastecimiento -->
+        <div class="col-md-3">
+            ${tasaDesabastecimiento ? `
+            <div class="card h-100">
+                <div class="card-body p-3 text-center d-flex flex-column justify-content-center">
+                    <div class="small text-muted mb-2"><i data-lucide="alert-circle"></i> Tasa Desabastecimiento</div>
+                    <h2 class="text-${tasaDesabastecimiento.nivel} mb-2" style="font-size: 3rem; font-weight: 800;">${tasaDesabastecimiento.porcentaje_desabastecimiento}%</h2>
+                    <p class="mb-2">${tasaDesabastecimiento.insumos_bajo_stock} de ${tasaDesabastecimiento.total_insumos} bajo stock</p>
+                    ${tasaDesabastecimiento.porcentaje_desabastecimiento > 30 ? 
+                        '<span class="badge bg-danger"><i data-lucide="x-circle"></i> Crítico</span>' : 
+                        tasaDesabastecimiento.porcentaje_desabastecimiento > 15 ? 
+                        '<span class="badge bg-warning"><i data-lucide="alert-triangle"></i> Atención</span>' : 
+                        '<span class="badge bg-success"><i data-lucide="check-circle"></i> Normal</span>'
+                    }
+                </div>
+            </div>
+            ` : ''}
+        </div>
+
+        <!-- Stock por Categoría -->
+        <div class="col-md-5">
+            <div class="card h-100">
+                <div class="card-body p-3">
+                    <div class="small text-muted mb-2"><i data-lucide="boxes"></i> Stock por Categoría</div>
+                    <canvas id="graficoStockCategoria" height="110"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vencimientos - Gráfico de Dona con altura controlada -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body p-3 d-flex flex-column">
+                    <div class="small text-muted mb-2 text-center"><i data-lucide="pie-chart"></i> Vencimientos</div>
+                    <div class="flex-grow-1 d-flex align-items-center justify-content-center" style="max-height: 180px;">
+                        <canvas id="graficoVencimientos"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de vencimientos -->
+    <div class="row g-2">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-2">
+                    <div class="small text-muted mb-1"><i data-lucide="clock"></i> Próximos Vencimientos (Top 10)</div>
+                    <div class="table-responsive" style="max-height: 160px;">
+                        <table class="table table-sm table-hover mb-0" style="font-size: 0.8rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Insumo</th>
+                                    <th>Lote</th>
+                                    <th>Vence</th>
+                                    <th>Días</th>
+                                    <th>Stock</th>
+                                    <th class="text-end">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${detalleVencer && detalleVencer.length > 0 ? detalleVencer.map(item => {
+                                    const dias = parseInt(item.dias_restantes);
+                                    return `
+                                    <tr class="${dias <= 30 ? 'table-danger' : dias <= 60 ? 'table-warning' : ''}">
+                                        <td><code>${item.codigo}</code></td>
+                                        <td class="text-truncate" style="max-width: 200px;">${item.nombre_generico}</td>
+                                        <td>${item.numero_lote}</td>
+                                        <td>${new Date(item.fecha_vencimiento).toLocaleDateString('es-BO')}</td>
+                                        <td><span class="badge bg-${dias <= 30 ? 'danger' : dias <= 60 ? 'warning' : 'info'}">${dias}d</span></td>
+                                        <td>${item.aplicaciones_disponibles}</td>
+                                        <td class="text-end">Bs. ${parseFloat(item.valor_lote).toFixed(2)}</td>
+                                    </tr>
+                                `;}).join('') : '<tr><td colspan="7" class="text-center text-muted py-2">No hay insumos próximos a vencer</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    ` : '<div class="alert alert-warning">Error cargando estadísticas</div>'}
+</div>
+
+<!-- Modal de Alertas al Iniciar Sesión -->
+<div class="modal fade" id="modalAlertasInicio" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i data-lucide="bell-ring" class="me-2"></i>
+                    Alertas del Sistema
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Resumen -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="card border-danger">
+                            <div class="card-body p-3 text-center">
+                                <i data-lucide="alert-triangle" style="width: 32px; height: 32px; color: #ef4444;"></i>
+                                <h3 class="text-danger mb-0 mt-2" id="contadorDesabastecimiento">${resumenAlertas.desabastecimiento}</h3>
+                                <small class="text-muted">Alertas de Desabastecimiento</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-warning">
+                            <div class="card-body p-3 text-center">
+                                <i data-lucide="clock" style="width: 32px; height: 32px; color: #f59e0b;"></i>
+                                <h3 class="text-warning mb-0 mt-2" id="contadorVencimiento">${resumenAlertas.vencimiento}</h3>
+                                <small class="text-muted">Alertas de Vencimiento</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs para filtrar -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabTodas">
+                            Todas <span class="badge bg-secondary" id="badgeTodas">${resumenAlertas.total}</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDesabastecimiento">
+                            <i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i> Desabastecimiento
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabVencimiento">
+                            <i data-lucide="clock" style="width: 14px; height: 14px;"></i> Vencimiento
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Contenido de Tabs -->
+                <div class="tab-content mt-3">
+                    <div class="tab-pane fade show active" id="tabTodas">
+                        <div id="listaAlertasTodas" style="max-height: 350px; overflow-y: auto;">
+                            <!-- Se llena con JavaScript -->
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="tabDesabastecimiento">
+                        <div id="listaAlertasDesabastecimiento" style="max-height: 350px; overflow-y: auto;">
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="tabVencimiento">
+                        <div id="listaAlertasVencimiento" style="max-height: 350px; overflow-y: auto;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="btnMarcarTodasLeidasModal">
+                    <i data-lucide="check-check" class="me-1"></i> Marcar todas como leídas
+                </button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                    <i data-lucide="x" class="me-1"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/node_modules/chart.js/dist/chart.umd.js"></script>
+<script>
+// Reinicializar iconos de Lucide después de cargar el contenido
+if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+}
+
+let stockPorCategoria = [];
+let insumosVencer = [];
+let alertasActivas = [];
+
+try {
+    stockPorCategoria = JSON.parse('${stockPorCategoria}');
+    insumosVencer = JSON.parse('${insumosVencer}');
+    alertasActivas = JSON.parse('${alertasActivas}');
+} catch(e) {
+    console.error('Error parseando datos:', e);
+}
+
+// Gráficos
+if (stockPorCategoria.length > 0) {
+    new Chart(document.getElementById('graficoStockCategoria'), {
+        type: 'bar',
+        data: {
+            labels: stockPorCategoria.map(item => item.categoria.substring(0, 8)),
+            datasets: [{
+                label: 'Aplicaciones',
+                data: stockPorCategoria.map(item => parseInt(item.total_aplicaciones)),
+                backgroundColor: '#3b82f6',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+                x: { ticks: { font: { size: 8 }, maxRotation: 45 } }
+            }
+        }
+    });
+}
+
+if (insumosVencer.length > 0) {
+    new Chart(document.getElementById('graficoVencimientos'), {
+        type: 'doughnut',
+        data: {
+            labels: insumosVencer.map(item => item.rango_dias + ' días'),
+            datasets: [{
+                data: insumosVencer.map(item => parseInt(item.cantidad_lotes)),
+                backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
+                borderWidth: 3,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '55%',
+            plugins: {
+                legend: { 
+                    position: 'bottom', 
+                    labels: { 
+                        boxWidth: 12, 
+                        font: { size: 11 },
+                        padding: 12,
+                        usePointStyle: true
+                    } 
+                }
+            },
+            layout: {
+                padding: {
+                    top: 5,
+                    bottom: 0
+                }
+            }
+        }
+    });
+}
+
+// Sistema de Alertas Modal
+function renderizarAlertas() {
+    const listaTodas = document.getElementById('listaAlertasTodas');
+    const listaDesab = document.getElementById('listaAlertasDesabastecimiento');
+    const listaVenc = document.getElementById('listaAlertasVencimiento');
+
+    if (alertasActivas.length === 0) {
+        const mensajeVacio = '<div class="text-center text-muted py-4"><i data-lucide="check-circle"></i><p class="mt-2">No hay alertas pendientes</p></div>';
+        listaTodas.innerHTML = mensajeVacio;
+        listaDesab.innerHTML = mensajeVacio;
+        listaVenc.innerHTML = mensajeVacio;
+        return;
+    }
+
+    const alertasDesab = alertasActivas.filter(a => a.titulo.includes('Desabastecimiento'));
+    const alertasVenc = alertasActivas.filter(a => a.titulo.includes('Vencimiento') || a.titulo.includes('VENCIDO'));
+
+    listaTodas.innerHTML = alertasActivas.map(renderAlertaItem).join('');
+    listaDesab.innerHTML = alertasDesab.length > 0 ? alertasDesab.map(renderAlertaItem).join('') : '<div class="text-center text-muted py-3">Sin alertas de desabastecimiento</div>';
+    listaVenc.innerHTML = alertasVenc.length > 0 ? alertasVenc.map(renderAlertaItem).join('') : '<div class="text-center text-muted py-3">Sin alertas de vencimiento</div>';
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function renderAlertaItem(alerta) {
+    const fecha = new Date(alerta.fecha_creacion).toLocaleDateString('es-BO', { 
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+    });
+    
+    const esDesab = alerta.titulo.includes('Desabastecimiento');
+    const esVencido = alerta.titulo.includes('VENCIDO');
+    const esUrgente = alerta.titulo.includes('URGENTE');
+    
+    let colorBorde = 'border-info';
+    let colorIcono = '#3b82f6';
+    let icono = 'info';
+    
+    if (esDesab) {
+        colorBorde = 'border-danger';
+        colorIcono = '#ef4444';
+        icono = 'alert-triangle';
+    } else if (esVencido) {
+        colorBorde = 'border-danger';
+        colorIcono = '#ef4444';
+        icono = 'x-circle';
+    } else if (esUrgente) {
+        colorBorde = 'border-warning';
+        colorIcono = '#f59e0b';
+        icono = 'clock';
+    } else if (alerta.titulo.includes('Vencimiento')) {
+        colorBorde = 'border-warning';
+        colorIcono = '#f59e0b';
+        icono = 'clock';
+    }
+
+    return '<div class="card mb-2 ' + colorBorde + '" style="border-left-width: 4px;">' +
+        '<div class="card-body p-3">' +
+            '<div class="d-flex justify-content-between align-items-start">' +
+                '<div class="d-flex">' +
+                    '<i data-lucide="' + icono + '" style="width: 20px; height: 20px; color: ' + colorIcono + '; flex-shrink: 0; margin-top: 2px;"></i>' +
+                    '<div class="ms-2">' +
+                        '<h6 class="mb-1">' + alerta.titulo + '</h6>' +
+                        '<p class="mb-1 small">' + alerta.mensaje + '</p>' +
+                        '<small class="text-muted">' + fecha + '</small>' +
+                    '</div>' +
+                '</div>' +
+                '<button class="btn btn-sm btn-outline-secondary" onclick="marcarAlertaLeidaModal(' + alerta.id_alerta + ')" title="Marcar como leída">' +
+                    '<i data-lucide="check" style="width: 14px; height: 14px;"></i>' +
+                '</button>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+}
+
+async function marcarAlertaLeidaModal(idAlerta) {
+    try {
+        await fetch('/alertas/marcar-leida/' + idAlerta, { method: 'PUT' });
+        alertasActivas = alertasActivas.filter(a => a.id_alerta !== idAlerta);
+        renderizarAlertas();
+        actualizarContadoresModal();
+        if (typeof actualizarContadorAlertas === 'function') actualizarContadorAlertas();
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+function actualizarContadoresModal() {
+    const desab = alertasActivas.filter(a => a.titulo.includes('Desabastecimiento')).length;
+    const venc = alertasActivas.filter(a => a.titulo.includes('Vencimiento') || a.titulo.includes('VENCIDO')).length;
+    
+    document.getElementById('contadorDesabastecimiento').textContent = desab;
+    document.getElementById('contadorVencimiento').textContent = venc;
+    document.getElementById('badgeTodas').textContent = alertasActivas.length;
+}
+
+document.getElementById('btnMarcarTodasLeidasModal').addEventListener('click', async function() {
+    try {
+        await fetch('/alertas/marcar-todas-leidas', { method: 'PUT' });
+        alertasActivas = [];
+        renderizarAlertas();
+        actualizarContadoresModal();
+        if (typeof actualizarContadorAlertas === 'function') actualizarContadorAlertas();
+    } catch (error) {
+        console.error('Error:', error);
+    }
+});
+
+// Inicializar
+renderizarAlertas();
+
+// Mostrar modal si hay alertas
+const mostrarModal = '${mostrarModalAlertas}' === 'true';
+if (mostrarModal && alertasActivas.length > 0) {
+    const modalAlertas = new bootstrap.Modal(document.getElementById('modalAlertasInicio'));
+    modalAlertas.show();
+}
+</script>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

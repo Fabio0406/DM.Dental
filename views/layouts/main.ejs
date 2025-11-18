@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- Bootstrap 5 Local -->
+    <link href="/node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Lucide Icons Local - SVG puro, nítidos -->
+    <script src="/node_modules/lucide/dist/umd/lucide.min.js"></script>
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navbar (solo si está autenticado) -->
+    <% if (locals.isAuthenticated) { %>
+    <nav class="navbar navbar-dark dm5-navbar-solid">
+        <div class="container-fluid px-3 d-flex align-items-center">
+            <!-- Botón hamburguesa -->
+            <button class="btn btn-link text-white p-0 dm5-menu-toggle" type="button" id="sidebarToggle">
+                <i data-lucide="menu"></i>
+            </button>
+            
+            <a class="navbar-brand ms-2 mb-0" href="/dashboard">Sistema DM-5</a>
+            
+            <div class="navbar-nav ms-auto d-flex flex-row align-items-center">
+                <!-- Icono de Campana de Alertas -->
+                <div class="nav-item me-3">
+                    <a class="nav-link position-relative p-0" href="#" id="alertasNavIcon" data-bs-toggle="dropdown">
+                        <i data-lucide="bell" style="width: 20px; height: 20px;"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="alertasBadge" style="display: none; font-size: 0.65rem;">
+                            0
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px; max-height: 400px; overflow-y: auto;">
+                        <li class="dropdown-header d-flex justify-content-between align-items-center">
+                            <span><i data-lucide="bell" class="me-1"></i> Alertas</span>
+                            <button class="btn btn-sm btn-link p-0" id="marcarTodasLeidas" style="font-size: 0.75rem;">Marcar todas leídas</button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li id="alertasListaDropdown">
+                            <div class="text-center text-muted py-3">
+                                <i data-lucide="loader" class="me-1"></i> Cargando...
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-center small" href="/dashboard">
+                                <i data-lucide="layout-dashboard" class="me-1"></i> Ver Dashboard
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Dropdown de Usuario -->
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle py-0 dm5-navbar-user" href="#" role="button" data-bs-toggle="dropdown">
+                        <%= user.nombres %> <%= user.apellidos %>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/users/profile"><i data-lucide="user" class="me-2"></i>Mi Perfil</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="/auth/logout" class="d-inline">
+                                <button type="submit" class="dropdown-item"><i data-lucide="log-out" class="me-2"></i>Cerrar Sesión</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar Fijo -->
+    <div class="dm5-sidebar" id="sidebar">
+        <div class="dm5-sidebar-header">
+            <h5>
+                <i data-lucide="layout-grid" class="me-2"></i>Menú Principal
+            </h5>
+        </div>
+        <div class="dm5-sidebar-body">
+            <nav class="nav flex-column">
+                <a class="nav-link" href="/dashboard">
+                    <i data-lucide="gauge"></i>
+                    <span>Dashboard</span>
+                </a>
+                
+                <div class="nav-section-title">Gestión de Pacientes</div>
+                <a class="nav-link" href="/pacientes">
+                    <i data-lucide="users"></i>
+                    <span>Lista de Pacientes</span>
+                </a>
+                <a class="nav-link" href="/pacientes/nuevo">
+                    <i data-lucide="user-plus"></i>
+                    <span>Nuevo Paciente</span>
+                </a>
+                
+                <div class="nav-section-title">Proyecciones Dentales</div>
+                <a class="nav-link" href="/proyecciones/nueva">
+                    <i data-lucide="wand-2"></i>
+                    <span>Nueva Proyección</span>
+                </a>
+                <a class="nav-link" href="/proyecciones/historial">
+                    <i data-lucide="history"></i>
+                    <span>Historial</span>
+                </a>
+                
+                <div class="nav-section-title">Inventario</div>
+                <a class="nav-link" href="/consumos/registro">
+                    <i data-lucide="package"></i>
+                    <span>Registrar Consumo</span>
+                </a>
+                <a class="nav-link" href="/consumos/historial">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Historial de Consumos</span>
+                </a>
+                <a class="nav-link" href="/kardex">
+                    <i data-lucide="book-open"></i>
+                    <span>Kardex</span>
+                </a>
+                
+                <div class="nav-section-title">OCR y Formularios</div>
+                <a class="nav-link" href="/ocr/upload">
+                    <i data-lucide="scan-line"></i>
+                    <span>Escanear Formulario</span>
+                </a>
+                <a class="nav-link" href="/ocr/list">
+                    <i data-lucide="list-checks"></i>
+                    <span>Formularios Procesados</span>
+                </a>
+            </nav>
+            
+            <!-- Toggle Modo Oscuro -->
+            <div class="dm5-theme-toggle">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="dm5-theme-label">
+                        <i data-lucide="moon" class="me-2"></i>Modo Oscuro
+                    </span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input dm5-theme-switch" type="checkbox" role="switch" id="darkModeToggle">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
+    <!-- Contenido principal -->
+    <main class="dm5-main-content" id="mainContent">
+        <%- body %>
+    </main>
+
+    <!-- Bootstrap JS Local -->
+    <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/main.js"></script>
+    
+    <script>
+        // Inicializar Lucide Icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    </script>
+    
+    <% if (locals.isAuthenticated) { %>
+    <script>
+        // Toggle del sidebar
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const navbar = document.querySelector('.dm5-navbar-solid');
+        
+        let sidebarOpen = false;
+        
+        sidebarToggle.addEventListener('click', function() {
+            sidebarOpen = !sidebarOpen;
+            
+            if (sidebarOpen) {
+                sidebar.classList.add('open');
+                mainContent.classList.add('shifted');
+                navbar.classList.add('shifted');
+            } else {
+                sidebar.classList.remove('open');
+                mainContent.classList.remove('shifted');
+                navbar.classList.remove('shifted');
+            }
+        });
+        
+        // Cerrar sidebar al hacer clic en un enlace (en móviles)
+        const navLinks = sidebar.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 992) {
+                    sidebarOpen = false;
+                    sidebar.classList.remove('open');
+                    mainContent.classList.remove('shifted');
+                    navbar.classList.remove('shifted');
+                }
+            });
+        });
+        
+        // Toggle Modo Oscuro
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const htmlElement = document.documentElement;
+        
+        // Cargar preferencia guardada
+        const savedTheme = localStorage.getItem('dm5-theme');
+        if (savedTheme === 'dark') {
+            htmlElement.setAttribute('data-theme', 'dark');
+            darkModeToggle.checked = true;
+        }
+        
+        darkModeToggle.addEventListener('change', function() {
+            if (this.checked) {
+                htmlElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('dm5-theme', 'dark');
+            } else {
+                htmlElement.removeAttribute('data-theme');
+                localStorage.setItem('dm5-theme', 'light');
+            }
+        });
+    </script>
+    <script>
+        // Sistema de Alertas en Navbar
+        const alertasBadge = document.getElementById('alertasBadge');
+        const alertasLista = document.getElementById('alertasListaDropdown');
+        const marcarTodasBtn = document.getElementById('marcarTodasLeidas');
+
+        // Cargar alertas al abrir dropdown
+        document.getElementById('alertasNavIcon').addEventListener('click', cargarAlertasDropdown);
+
+        async function cargarAlertasDropdown() {
+            try {
+                const response = await fetch('/alertas/no-leidas');
+                const data = await response.json();
+                
+                if (data.success && data.alertas.length > 0) {
+                    alertasLista.innerHTML = data.alertas.slice(0, 5).map(alerta => {
+                        const fecha = new Date(alerta.fecha_creacion).toLocaleDateString('es-BO');
+                        const esVencimiento = alerta.titulo.includes('Vencimiento') || alerta.titulo.includes('VENCIDO');
+                        const iconColor = esVencimiento ? '#f59e0b' : '#ef4444';
+                        const iconName = esVencimiento ? 'clock' : 'alert-triangle';
+                        
+                        return '<a class="dropdown-item py-2" href="#" onclick="marcarAlertaLeida(' + alerta.id_alerta + ')">' +
+                            '<div class="d-flex align-items-start">' +
+                                '<i data-lucide="' + iconName + '" style="width: 16px; height: 16px; color: ' + iconColor + '; flex-shrink: 0; margin-top: 2px;"></i>' +
+                                '<div class="ms-2" style="font-size: 0.8rem;">' +
+                                    '<div class="fw-bold">' + alerta.titulo + '</div>' +
+                                    '<div class="text-muted text-truncate" style="max-width: 250px;">' + (alerta.codigo || '') + ' ' + (alerta.nombre_generico || '') + '</div>' +
+                                    '<small class="text-muted">' + fecha + '</small>' +
+                                '</div>' +
+                            '</div>' +
+                        '</a>';
+                    }).join('');
+                    
+                    if (data.alertas.length > 5) {
+                        alertasLista.innerHTML += '<div class="text-center small text-muted py-1">+' + (data.alertas.length - 5) + ' alertas más</div>';
+                    }
+                    
+                    // Reinicializar iconos
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                } else {
+                    alertasLista.innerHTML = '<div class="text-center text-muted py-3"><i data-lucide="check-circle" class="me-1"></i> Sin alertas pendientes</div>';
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            } catch (error) {
+                console.error('Error cargando alertas:', error);
+                alertasLista.innerHTML = '<div class="text-center text-danger py-2">Error al cargar</div>';
+            }
+        }
+
+        async function actualizarContadorAlertas() {
+            try {
+                const response = await fetch('/alertas/contar');
+                const data = await response.json();
+                
+                if (data.success && data.total > 0) {
+                    alertasBadge.textContent = data.total > 99 ? '99+' : data.total;
+                    alertasBadge.style.display = 'inline';
+                } else {
+                    alertasBadge.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error actualizando contador:', error);
+            }
+        }
+
+        async function marcarAlertaLeida(idAlerta) {
+            try {
+                await fetch('/alertas/marcar-leida/' + idAlerta, { method: 'PUT' });
+                actualizarContadorAlertas();
+                cargarAlertasDropdown();
+            } catch (error) {
+                console.error('Error marcando alerta:', error);
+            }
+        }
+
+        marcarTodasBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+                await fetch('/alertas/marcar-todas-leidas', { method: 'PUT' });
+                actualizarContadorAlertas();
+                cargarAlertasDropdown();
+            } catch (error) {
+                console.error('Error marcando todas:', error);
+            }
+        });
+
+        // Actualizar contador al cargar la página
+        actualizarContadorAlertas();
+        
+        // Actualizar cada 5 minutos
+        setInterval(actualizarContadorAlertas, 300000);
+    </script>
+    <% } %>
+</body>
+
+</html>

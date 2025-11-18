@@ -1,0 +1,159 @@
+<% 
+const body = `
+<div class="container">
+    <div class="page-header">
+        <h1>Resultado de Proyección Dental</h1>
+        <div class="header-actions" style="display: flex; gap: 0.5rem;">
+            <a href="/proyecciones/historial" class="btn btn-secondary">← Volver al historial</a>
+            <a href="/pacientes/${proyeccion.ci}/perfil" class="btn btn-info">👤 Ver Paciente</a>
+            <a href="/proyecciones/${proyeccion.id_proyeccion}/descargar" class="btn btn-success">📥 Descargar Imagen</a>
+        </div>
+    </div>
+
+    <div class="resultado-container">
+        <div class="info-card" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+            <h3>Información del Paciente</h3>
+            <div class="info-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                <div class="info-item" style="padding: 0.75rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                    <label>Nombre Completo:</label>
+                    <strong>${proyeccion.nombres} ${proyeccion.apellidos}</strong>
+                </div>
+                <div class="info-item" style="padding: 0.75rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                    <label>CI:</label>
+                    <strong>${proyeccion.ci}</strong>
+                </div>
+                <div class="info-item" style="padding: 0.75rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                    <label>Edad:</label>
+                    <strong>${(() => {
+                        const fechaNac = new Date(proyeccion.fecha_nacimiento);
+                        const hoy = new Date();
+                        let edad = hoy.getFullYear() - fechaNac.getFullYear();
+                        return edad;
+                    })()} años</strong>
+                </div>
+                <div class="info-item" style="padding: 0.75rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                    <label>Fecha de Proyección:</label>
+                    <strong>${new Date(proyeccion.fecha_generacion).toLocaleDateString('es-BO', { 
+                        day: '2-digit', 
+                        month: 'long', 
+                        year: 'numeric' 
+                    })}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison-section" style="background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem;">
+            <h3>Comparación Antes y Después</h3>
+            <div class="image-comparison" style="display: grid; grid-template-columns: 1fr 80px 1fr; gap: 1rem; align-items: center; margin-top: 1.5rem;">
+                <div class="comparison-side">
+                    <div class="comparison-label" style="text-align: center; font-weight: bold; color: #666; margin-bottom: 0.75rem; font-size: 0.9rem;">ANTES</div>
+                    <img src="${proyeccion.ruta_imagen_original}" alt="Imagen original" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                </div>
+                <div class="comparison-divider" style="text-align: center;">
+                    <div class="arrow" style="font-size: 3rem; color: #007bff;">→</div>
+                </div>
+                <div class="comparison-side" style="position: relative;">
+                    <div class="comparison-label" style="text-align: center; font-weight: bold; color: #666; margin-bottom: 0.75rem; font-size: 0.9rem;">DESPUÉS</div>
+                    <img src="${proyeccion.ruta_proyeccion}" alt="Proyección procesada" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div class="proyeccion-badge ${proyeccion.tipo_tratamiento}" style="position: absolute; top: 1rem; right: 1rem; padding: 0.5rem 1rem; border-radius: 20px; color: white; font-weight: bold; font-size: 0.85rem; background: '${proyeccion.tipo_tratamiento === 'ortodoncia' ? '#3498db' : '#9b59b6'};'">
+                        ${proyeccion.tipo_tratamiento}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="treatment-details" style="display: grid; gap: 2rem;">
+            <div class="detail-card" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h3>Detalles del Tratamiento</h3>
+                
+                <div class="detail-row" style="padding: 0.75rem 0; border-bottom: 1px solid #eee;">
+                    <label>Tipo de Tratamiento:</label>
+                    <span class="treatment-type ${proyeccion.tipo_tratamiento}" style="padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; display: inline-block; background: '${proyeccion.tipo_tratamiento === 'ortodoncia' ? '#e3f2fd' : '#f3e5f5'};'">
+                        ${proyeccion.tipo_tratamiento === 'ortodoncia' ? '🦷 Ortodoncia' : '✨ Carillas Dentales'}
+                    </span>
+                </div>
+
+                <div class="detail-row" style="padding: 0.75rem 0; border-bottom: 1px solid #eee;">
+                    <label>Intensidad Aplicada:</label>
+                    <div class="intensity-bar" style="height: 30px; background: #f0f0f0; border-radius: 15px; overflow: hidden; position: relative; margin-top: 0.5rem;">
+                        <div class="intensity-fill" style="height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a); display: flex; align-items: center; justify-content: flex-end; padding-right: 1rem; color: white; font-weight: bold; width: '${proyeccion.intensidad}%;'">
+                            ${proyeccion.intensidad}%
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-row" style="padding: 0.75rem 0; border-bottom: 1px solid #eee;">
+                    <label>Diagnóstico:</label>
+                    <p class="diagnosis-text" style="margin-top: 0.5rem; line-height: 1.6;">${proyeccion.diagnostico}</p>
+                </div>
+
+                <div class="detail-row" style="padding: 0.75rem 0; border-bottom: 1px solid #eee;">
+                    <label>Duración Estimada:</label>
+                    <strong>${proyeccion.duracion_estimada}</strong>
+                </div>
+
+                
+            </div>
+
+            ${proyeccion.metadata ? `
+                <div class="detail-card technical-info" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h3>Información Técnica</h3>
+                    <details>
+                        <summary style="cursor: pointer; color: #007bff; font-weight: bold;">Ver detalles del procesamiento</summary>
+                        <div class="metadata-content" style="margin-top: 1rem; background: #f8f9fa; padding: 1rem; border-radius: 4px; overflow-x: auto;">
+                            <pre style="margin: 0; font-size: 0.85rem;">${JSON.stringify(typeof proyeccion.metadata === 'string' ? JSON.parse(proyeccion.metadata) : proyeccion.metadata, null, 2)}</pre>
+                        </div>
+                    </details>
+                </div>
+            ` : ''}
+        </div>
+
+        <div class="actions-section" style="background: white; padding: 2rem; border-radius: 8px; margin-top: 2rem;">
+            <h3>Acciones Disponibles</h3>
+            <div class="action-buttons" style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+                <button onclick="window.print()" class="btn btn-info">🖨️ Imprimir Resultado</button>
+                <button onclick="eliminarProyeccion()" class="btn btn-danger">🗑️ Eliminar Proyección</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    
+
+    async function eliminarProyeccion() {
+        if (!confirm('¿Está seguro de eliminar esta proyección?\\n\\nEsta acción no se puede deshacer.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/proyecciones/${proyeccion.id}', {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Proyección eliminada exitosamente');
+                window.location.href = '/proyecciones/historial';
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al eliminar la proyección');
+        }
+    }
+</script>
+
+<style>
+    @media print {
+        .page-header, .actions-section, .btn {
+            display: none !important;
+        }
+    }
+</style>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

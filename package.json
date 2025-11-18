@@ -1,0 +1,46 @@
+{
+  "name": "proyecto-dm5",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "seed": "node seeds/createUsers.js",
+    "seed:insumos": "node seeds/createInsumos.js",
+    "seed:stock": "node seeds/updateStock.js",
+    "seed:protocolos": "node seeds/createProtocolos.js",
+    "seed:lotes": "node seeds/createLotes.js",
+    "seed:pacientes": "node seeds/createPacientes.js",
+    "seed:all": "npm run seed && npm run seed:insumos && npm run seed:protocolos && npm run seed:lotes"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^4.15.0",
+    "@vladmandic/face-api": "^1.7.13",
+    "bcryptjs": "^3.0.2",
+    "bootstrap": "^5.1.3",
+    "canvas": "^2.11.2",
+    "chart.js": "^4.4.0",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^17.2.2",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "lucide": "^0.553.0",
+    "multer": "^2.0.2",
+    "pg": "^8.16.3",
+    "sharp": "^0.34.4",
+    "tesseract.js": "^6.0.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

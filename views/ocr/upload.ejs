@@ -1,0 +1,72 @@
+<% 
+const body = `
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="bi bi-camera"></i> Escanear Formulario SALMI</h4>
+                    <p class="mb-0 text-muted">Sube una imagen del formulario para extraer datos automáticamente</p>
+                </div>
+                <div class="card-body">
+                    ${success ? `<div class="alert alert-success">${success}</div>` : ''}
+                    ${error ? `<div class="alert alert-danger">${error}</div>` : ''}
+                    
+                    <form method="POST" action="/ocr/upload" enctype="multipart/form-data" id="uploadForm">
+                        <div class="mb-4">
+                            <label for="formulario" class="form-label">
+                                <strong>Seleccionar imagen del formulario:</strong>
+                            </label>
+                            <input type="file" class="form-control" id="formulario" name="formulario" 
+                                   accept="image/*" required>                            
+                        </div>
+
+                        <!-- Preview de imagen -->
+                        <div id="imagePreview" class="mb-3" style="display: none;">
+                            <label class="form-label">Vista previa:</label>
+                            <div class="border rounded p-2">
+                                <img id="previewImg" src="" alt="Vista previa" class="img-fluid" style="max-height: 300px;">
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="bi bi-search"></i> Procesar con IA
+                            </button>
+                            <a href="/ocr" class="btn btn-outline-secondary">
+                                <i class="bi bi-journal-text"></i> Ver formularios anteriores
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Preview de imagen
+document.getElementById('formulario').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('imagePreview').style.display = 'none';
+    }
+});
+
+// Loading state
+document.getElementById('uploadForm').addEventListener('submit', function() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+    submitBtn.disabled = true;
+});
+</script>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

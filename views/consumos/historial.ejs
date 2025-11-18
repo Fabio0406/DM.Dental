@@ -1,0 +1,222 @@
+<% 
+const body = `
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="bi bi-journal-text"></i> Historial de Consumos con Kardex</h3>
+                <div class="d-flex gap-2">
+                    <a href="/consumos/registro" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Nuevo Registro</a>
+                    <a href="/consumos/estadisticas" class="btn btn-outline-info"><i class="bi bi-bar-chart-line"></i> Estadísticas</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-md-6 col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6><i class="bi bi-funnel"></i> Filtros</h6>
+                    <form method="GET" action="/consumos/historial">
+                        <div class="mb-3">
+                            <label for="fecha" class="form-label">Fecha:</label>
+                            <input type="date" class="form-control" id="fecha" name="fecha" 
+                                   value="${fechaFiltro || ''}">
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
+                            <a href="/consumos/historial" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    ${locals.error ? `
+        <div class="alert alert-danger">${error}</div>
+    ` : ''}
+
+    ${consumos.length === 0 ? `
+        <div class="row">
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <h4 class="text-muted"><i class="bi bi-file-earmark-text"></i> No hay registros de consumo</h4>
+                    <p class="text-muted">
+                        ${fechaFiltro ? 'No se encontraron consumos para la fecha seleccionada' : 'Aún no has registrado ningún consumo'}
+                    </p>
+                    <a href="/consumos/registro" class="btn btn-primary btn-lg">
+                        <i class="bi bi-pencil-square"></i> Registrar primer consumo
+                    </a>
+                </div>
+            </div>
+        </div>
+    ` : `
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6><i class="bi bi-journal-text"></i> Registros de Consumo con Kardex</h6>
+                        <span class="badge bg-primary">${consumos.length} registro(s)</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha/Hora</th>
+                                        <th>Servicio</th>                                        
+                                        <th>Total Items</th>
+                                        <th>Valor Total</th>
+                                        <th>Observaciones</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${consumos.map(consumo => {
+                                        const fechaLocal = new Date(consumo.fecha_consumo).toLocaleDateString('es-BO');
+                                        const timeOptions = { hour: '2-digit', minute: '2-digit' };
+                                        const horaLocal = new Date(consumo.fecha_consumo).toLocaleTimeString('es-BO', timeOptions);                                        
+                                        const observacionesInfo = consumo.observaciones ? 
+                                            '<small>' + consumo.observaciones + '</small>' : 
+                                            '<span class="text-muted">-</span>';
+                                        
+                                        return '<tr>' +
+                                            '<td>' +
+                                                '<strong>' + fechaLocal + '</strong>' +
+                                                '<br>' +
+                                                '<small class="text-muted">' + horaLocal + '</small>' +
+                                            '</td>' +
+                                            '<td>' +
+                                                '<span class="badge bg-info">' +
+                                                    (consumo.tipo_servicio_nombre || 'N/A') +
+                                                '</span>' +
+                                            '</td>' +
+                                            '<td>' +
+                                                '<span class="badge bg-success">' + (consumo.total_insumos || 0) + ' tipos</span>' +
+                                                '<br>' +
+                                                '<small class="text-muted">' + (consumo.total_detalles || 0) + ' movimientos</small>' +
+                                            '</td>' +
+                                            '<td>' +
+                                                '<strong>Bs. ' + parseFloat(consumo.valor_total_consumido || 0).toFixed(2) + '</strong>' +
+                                            '</td>' +
+                                            '<td>' + observacionesInfo + '</td>' +
+                                            '<td>' +
+                                                '<button class="btn btn-sm btn-outline-info" ' +
+                                                        'onclick="verDetalles(' + consumo.id_consumo + ')" ' +
+                                                        'data-bs-toggle="modal" data-bs-target="#detallesModal">' +
+                                                    '<i class="bi bi-eye"></i> Ver Detalles' +
+                                                '</button>' +
+                                            '</td>' +
+                                        '</tr>';
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `}
+</div>
+
+<!-- Modal para ver detalles del consumo -->
+<div class="modal fade" id="detallesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-journal-text"></i> Detalles del Consumo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalles_content">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2">Cargando detalles...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function verDetalles(consumoId) {
+    try {
+        const response = await fetch('/consumos/api/detalles/' + consumoId);
+        const data = await response.json();
+        
+        const content = document.getElementById('detalles_content');
+        
+        if (data.success && data.detalles.length > 0) {
+            let tableHtml = '<div class="table-responsive">' +
+                '<table class="table table-sm">' +
+                    '<thead class="table-light">' +
+                        '<tr>' +
+                            '<th>Código</th>' +
+                            '<th>Insumo</th>' +
+                            '<th>Lote</th>' +
+                            '<th>Vencimiento</th>' +
+                            '<th>Cantidad</th>' +
+                            '<th>Costo Unit.</th>' +
+                            '<th>Total</th>' +
+                        '</tr>' +
+                    '</thead>' +
+                    '<tbody>';
+            
+            let totalGeneral = 0;
+            
+            data.detalles.forEach(detalle => {
+                const fechaVenc = detalle.fecha_vencimiento ? 
+                    new Date(detalle.fecha_vencimiento).toLocaleDateString('es-BO') : 
+                    'N/A';
+                const costoTotal = parseFloat(detalle.costo_total);
+                totalGeneral += costoTotal;
+                
+                tableHtml += '<tr>' +
+                    '<td><code>' + detalle.codigo + '</code></td>' +
+                    '<td>' +
+                        '<strong>' + detalle.nombre_generico + '</strong>' +
+                        '<br><small class="text-muted">' + (detalle.presentacion || 'N/A') + '</small>' +
+                    '</td>' +
+                    '<td>' +
+                        '<span class="badge bg-light text-dark">' + (detalle.numero_lote || 'N/A') + '</span>' +
+                    '</td>' +
+                    '<td>' + fechaVenc + '</td>' +
+                    '<td>' +
+                        '<span class="badge bg-warning">' + detalle.cantidad_consumida + '</span>' +
+                    '</td>' +
+                    '<td>Bs. ' + parseFloat(detalle.costo_unitario).toFixed(2) + '</td>' +
+                    '<td><strong>Bs. ' + costoTotal.toFixed(2) + '</strong></td>' +
+                '</tr>';
+            });
+            
+            tableHtml += '</tbody>' +
+                '<tfoot class="table-light">' +
+                    '<tr>' +
+                        '<th colspan="6">TOTAL CONSUMO:</th>' +
+                        '<th>Bs. ' + totalGeneral.toFixed(2) + '</th>' +
+                    '</tr>' +
+                '</tfoot>' +
+            '</table>' +
+        '</div>';
+            
+            content.innerHTML = tableHtml;
+        } else {
+            content.innerHTML = '<div class="alert alert-warning">No se encontraron detalles para este consumo.</div>';
+        }
+    } catch (error) {
+        console.error('Error cargando detalles:', error);
+        document.getElementById('detalles_content').innerHTML = '<div class="alert alert-danger">Error cargando detalles del consumo.</div>';
+    }
+}
+</script>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>
