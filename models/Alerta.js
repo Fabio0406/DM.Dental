@@ -202,7 +202,7 @@ class Alerta {
           const fechaVenc = new Date(lote.fecha_vencimiento).toLocaleDateString('es-BO');
           const alerta = await this.crear({
             titulo: titulo,
-            mensaje: `${insumo.codigo} - ${lote.nombre_generico}. Lote: ${lote.numero_lote}, Vence: ${fechaVenc}, Días restantes: ${diasRestantes}, Stock: ${lote.aplicaciones_disponibles} aplicaciones. Nivel: ${nivelUrgencia}`,
+            mensaje: `${lote.codigo} - ${lote.nombre_generico}. Lote: ${lote.numero_lote}, Vence: ${fechaVenc}, Días restantes: ${diasRestantes}, Stock: ${lote.aplicaciones_disponibles} aplicaciones. Nivel: ${nivelUrgencia}`,
             id_usuario: idUsuario,
             id_insumo: lote.id_insumo
           });

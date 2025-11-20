@@ -14,7 +14,7 @@ class DashboardController {
           Alerta.generarAlertasDesabastecimiento(req.session.userId),
           Alerta.generarAlertasVencimiento(req.session.userId)
         ]);
-        
+
         alertasGeneradas = {
           desabastecimiento: alertasDesab.length,
           vencimiento: alertasVenc.length
@@ -41,29 +41,28 @@ class DashboardController {
         Dashboard.getInsumosProximosVencer(),
         Dashboard.getDetalleInsumosVencer(90)
       ]);
-
       res.render('dashboard/index', {
         title: 'Dashboard - Sistema DM-5',
         stats: statsGenerales,
-        stockPorCategoria, // Enviar como array/objeto
+        stockPorCategoria: JSON.stringify(stockPorCategoria),
         tasaDesabastecimiento,
-        insumosVencer,     // Enviar como array/objeto
+        insumosVencer: JSON.stringify(insumosVencer),
         detalleVencer,
-        alertasActivas,    // Enviar como array/objeto
+        alertasActivas: JSON.stringify(alertasActivas),
         resumenAlertas,
         mostrarModalAlertas: alertasActivas.length > 0
       });
-      
+
     } catch (error) {
       console.error('Error cargando dashboard:', error);
       res.render('dashboard/index', {
         title: 'Dashboard - Sistema DM-5',
         stats: null,
-        stockPorCategoria: [],
+        stockPorCategoria: JSON.stringify([]),
         tasaDesabastecimiento: null,
-        insumosVencer: [],
+        insumosVencer: JSON.stringify([]),
         detalleVencer: [],
-        alertasActivas: [],
+        alertasActivas: JSON.stringify([]),
         resumenAlertas: { desabastecimiento: 0, vencimiento: 0, total: 0 },
         mostrarModalAlertas: false,
         error: 'Error cargando estadísticas'
