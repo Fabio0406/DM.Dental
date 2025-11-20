@@ -1,14 +1,14 @@
-const { pool } = require('../config/database');
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO: require() a import, añadido .js
 
 class Paciente {
 
   // Crear nuevo paciente
   static async crear(datos) {
     const query = `
-      INSERT INTO pacientes (ci, nombres, apellidos, fecha_nacimiento, sexo, telefono, direccion, id_usuario)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
-    `;
+      INSERT INTO pacientes (ci, nombres, apellidos, fecha_nacimiento, sexo, telefono, direccion, id_usuario)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `;
 
     const values = [
       datos.ci,
@@ -28,21 +28,21 @@ class Paciente {
   // Obtener todos los pacientes con paginación y búsqueda
   static async obtenerTodos(filtros = {}) {
     let baseQuery = `
-      SELECT 
-        p.ci,
-        p.nombres,
-        p.apellidos,
-        p.fecha_nacimiento,
-        p.telefono,
-        p.direccion,
-        p.sexo,
-        p.fecha_registro,
-        COUNT(DISTINCT pd.id_proyeccion) AS total_proyecciones,
-        MAX(pd.fecha_generacion) AS ultima_proyeccion
-      FROM pacientes p
-      LEFT JOIN imagenes_paciente ip ON ip.id_paciente = p.ci
-      LEFT JOIN proyecciones_dental pd ON pd.id_imagen = ip.id_imagen
-    `;
+      SELECT 
+        p.ci,
+        p.nombres,
+        p.apellidos,
+        p.fecha_nacimiento,
+        p.telefono,
+        p.direccion,
+        p.sexo,
+        p.fecha_registro,
+        COUNT(DISTINCT pd.id_proyeccion) AS total_proyecciones,
+        MAX(pd.fecha_generacion) AS ultima_proyeccion
+      FROM pacientes p
+      LEFT JOIN imagenes_paciente ip ON ip.id_paciente = p.ci
+      LEFT JOIN proyecciones_dental pd ON pd.id_imagen = ip.id_imagen
+    `;
 
     const conditions = [];
     const values = [];
@@ -66,11 +66,11 @@ class Paciente {
     }
 
     baseQuery += `
-      GROUP BY 
-        p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, 
-        p.telefono, p.direccion, p.sexo, p.fecha_registro
-      ORDER BY p.apellidos, p.nombres
-    `;
+      GROUP BY 
+        p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, 
+        p.telefono, p.direccion, p.sexo, p.fecha_registro
+      ORDER BY p.apellidos, p.nombres
+    `;
 
     // Paginación
     if (filtros.limit) {
@@ -89,37 +89,37 @@ class Paciente {
   }
 
   static async obtenerPorId(ci) {
-  const query = `
-    SELECT 
-      p.*,
-      json_agg(
-        DISTINCT jsonb_build_object(
-          'id_imagen', ip.id_imagen,
-          'ruta_imagen', ip.ruta_imagen,
-          'tipo_imagen', ip.tipo_imagen,
-          'fecha_captura', ip.fecha_captura,
-          'descripcion', ip.descripcion
-        )
-      ) FILTER (WHERE ip.id_imagen IS NOT NULL) AS imagenes,
-      json_agg(
-        DISTINCT jsonb_build_object(
-          'id_proyeccion', pd.id_proyeccion,
-          'tipo_tratamiento', pd.tipo_tratamiento,
-          'ruta_proyeccion', pd.ruta_proyeccion,
-          'parametros_ia', pd.parametros_ia::text,  -- 👈 aquí
-          'fecha_generacion', pd.fecha_generacion
-        )
-      ) FILTER (WHERE pd.id_proyeccion IS NOT NULL) AS proyecciones
-    FROM pacientes p
-    LEFT JOIN imagenes_paciente ip ON p.ci = ip.id_paciente
-    LEFT JOIN proyecciones_dental pd ON ip.id_imagen = pd.id_imagen
-    WHERE p.ci = $1
-    GROUP BY p.ci
-  `;
+    const query = `
+    SELECT 
+      p.*,
+      json_agg(
+        DISTINCT jsonb_build_object(
+          'id_imagen', ip.id_imagen,
+          'ruta_imagen', ip.ruta_imagen,
+          'tipo_imagen', ip.tipo_imagen,
+          'fecha_captura', ip.fecha_captura,
+          'descripcion', ip.descripcion
+        )
+      ) FILTER (WHERE ip.id_imagen IS NOT NULL) AS imagenes,
+      json_agg(
+        DISTINCT jsonb_build_object(
+          'id_proyeccion', pd.id_proyeccion,
+          'tipo_tratamiento', pd.tipo_tratamiento,
+          'ruta_proyeccion', pd.ruta_proyeccion,
+          'parametros_ia', pd.parametros_ia::text, 
+          'fecha_generacion', pd.fecha_generacion
+        )
+      ) FILTER (WHERE pd.id_proyeccion IS NOT NULL) AS proyecciones
+    FROM pacientes p
+    LEFT JOIN imagenes_paciente ip ON p.ci = ip.id_paciente
+    LEFT JOIN proyecciones_dental pd ON ip.id_imagen = pd.id_imagen
+    WHERE p.ci = $1
+    GROUP BY p.ci
+  `;
 
-  const result = await pool.query(query, [ci]);
-  return result.rows[0];
-}
+    const result = await pool.query(query, [ci]);
+    return result.rows[0];
+  }
 
   // Obtener paciente simple
   static async obtenerPorCI(ci) {
@@ -135,17 +135,17 @@ class Paciente {
   // Actualizar paciente
   static async actualizar(ci, datos) {
     const query = `
-      UPDATE pacientes
-      SET 
-        nombres = COALESCE($1, nombres),
-        apellidos = COALESCE($2, apellidos),
-        fecha_nacimiento = COALESCE($3, fecha_nacimiento),
-        sexo = COALESCE($4, sexo),
-        telefono = COALESCE($5, telefono),
-        direccion = COALESCE($6, direccion)
-      WHERE ci = $7
-      RETURNING *
-    `;
+      UPDATE pacientes
+      SET 
+        nombres = COALESCE($1, nombres),
+        apellidos = COALESCE($2, apellidos),
+        fecha_nacimiento = COALESCE($3, fecha_nacimiento),
+        sexo = COALESCE($4, sexo),
+        telefono = COALESCE($5, telefono),
+        direccion = COALESCE($6, direccion)
+      WHERE ci = $7
+      RETURNING *
+    `;
 
     const values = [
       datos.nombres,
@@ -184,20 +184,20 @@ class Paciente {
   // Estadísticas de pacientes
   static async obtenerEstadisticas() {
     const query = `
-      SELECT 
-        COUNT(*) AS total_pacientes,
-        COUNT(*) FILTER (WHERE sexo ILIKE 'masculino' OR sexo ILIKE 'M') AS total_masculino,
-        COUNT(*) FILTER (WHERE sexo ILIKE 'femenino' OR sexo ILIKE 'F') AS total_femenino,
-        COUNT(DISTINCT pd.id_proyeccion) AS total_proyecciones,
-        COUNT(DISTINCT p.ci) FILTER (WHERE pd.id_proyeccion IS NOT NULL) AS pacientes_con_proyecciones
-      FROM pacientes p
-      LEFT JOIN imagenes_paciente ip ON ip.id_paciente = p.ci
-      LEFT JOIN proyecciones_dental pd ON pd.id_imagen = ip.id_imagen
-    `;
+      SELECT 
+        COUNT(*) AS total_pacientes,
+        COUNT(*) FILTER (WHERE sexo ILIKE 'masculino' OR sexo ILIKE 'M') AS total_masculino,
+        COUNT(*) FILTER (WHERE sexo ILIKE 'femenino' OR sexo ILIKE 'F') AS total_femenino,
+        COUNT(DISTINCT pd.id_proyeccion) AS total_proyecciones,
+        COUNT(DISTINCT p.ci) FILTER (WHERE pd.id_proyeccion IS NOT NULL) AS pacientes_con_proyecciones
+      FROM pacientes p
+      LEFT JOIN imagenes_paciente ip ON ip.id_paciente = p.ci
+      LEFT JOIN proyecciones_dental pd ON pd.id_imagen = ip.id_imagen
+    `;
 
     const result = await pool.query(query);
     return result.rows[0];
   }
 }
 
-module.exports = Paciente;
+export default Paciente; // ⬅️ CAMBIADO: module.exports a export default

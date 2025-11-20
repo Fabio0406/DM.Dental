@@ -1,9 +1,10 @@
-const Paciente = require('../models/Paciente');
-const ImagenPaciente = require('../models/ImagenPaciente');
-const ProyeccionDental = require('../models/ProyeccionDental');
-const ProyeccionService = require('../services/proyeccionService');
-const path = require('path');
-const fs = require('fs').promises;
+// Importaciones de módulos locales (Añadir .js y usar import)
+import Paciente from '../models/Paciente.js';
+import ImagenPaciente from '../models/ImagenPaciente.js';
+import ProyeccionDental from '../models/ProyeccionDental.js';
+import ProyeccionService from '../services/proyeccionService.js'; // ⬅️ CAMBIADO y añadido .js
+import path from 'path';
+import { promises as fs } from 'fs';
 
 /**
  * Controlador de Proyecciones Dentales
@@ -211,7 +212,7 @@ const proyeccionController = {
     try {
       const { id } = req.params;
       const proyeccion = await ProyeccionDental.obtenerPorId(id);
-      
+
       if (!proyeccion) {
         return res.status(404).render('error', {
           message: 'Proyección no encontrada',
@@ -388,4 +389,4 @@ const proyeccionController = {
 
 };
 
-module.exports = proyeccionController;
+export default proyeccionController; // ⬅️ CAMBIADO: module.exports a export default

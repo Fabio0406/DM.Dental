@@ -1,25 +1,30 @@
-const express = require('express');
-const path = require('path');
-require('dotenv').config();
-const fs = require('fs');
+import express from 'express';
+import path from 'path';
+import 'dotenv/config'; // ⬅️ CAMBIADO: require('dotenv').config() a import 'dotenv/config'
+import fs from 'fs';   // ⬅️ CAMBIADO: require() a import
 
-// Importar configuraciones
-const sessionConfig = require('./config/session');
-const { testConnection } = require('./config/database');
+// Importar configuraciones (Añadir .js)
+import sessionConfig from './config/session.js';
+import { testConnection } from './config/database.js'; // Asumo que database.js exporta pool y testConnection
 
-// Importar middleware
-const { addUserToViews } = require('./middleware/auth');
+// Importar middleware (Añadir .js)
+import { addUserToViews } from './middleware/auth.js';
 
-// Importar rutas
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const dashboardRoutes = require('./routes/dashboard');
-const ocrRoutes = require('./routes/ocr');
-const consumoRoutes = require('./routes/consumos');
-const kardexRoutes = require('./routes/kardex');
-const pacientesRoutes = require('./routes/pacientes');
-const proyeccionesRoutes = require('./routes/proyecciones');
-const alertasRoutes = require('./routes/alertas');
+// Importar rutas (Añadir .js)
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import dashboardRoutes from './routes/dashboard.js';
+import ocrRoutes from './routes/ocr.js';
+import consumoRoutes from './routes/consumos.js';
+import kardexRoutes from './routes/kardex.js';
+import pacientesRoutes from './routes/pacientes.js';
+import proyeccionesRoutes from './routes/proyecciones.js';
+import alertasRoutes from './routes/alertas.js';
+
+// Usar __dirname en ES Modules
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -116,21 +121,21 @@ app.use((req, res, next) => {
 app.listen(PORT, async () => {
   console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
   console.log(`🏥 Sistema Odontológico DM-5 - Entorno: ${process.env.NODE_ENV}`);
-  
+
   // Probar conexión a la base de datos
   await testConnection();
-  
+
   console.log('\n📋 Rutas disponibles:');
-  console.log('   🏠 GET  /                    - Página principal');
-  console.log('   🔐 GET  /auth/login          - Formulario de login');
-  console.log('   🔐 POST /auth/login          - Procesar login');
-  console.log('   🚪 POST /auth/logout         - Cerrar sesión');
-  console.log('   👤 GET  /users/profile       - Perfil del usuario');
-  console.log('   👤 POST /users/profile       - Actualizar perfil');
-  console.log('   📊 GET  /dashboard           - Dashboard principal');
+  console.log('   🏠 GET  /                    - Página principal');
+  console.log('   🔐 GET  /auth/login          - Formulario de login');
+  console.log('   🔐 POST /auth/login          - Procesar login');
+  console.log('   🚪 POST /auth/logout         - Cerrar sesión');
+  console.log('   👤 GET  /users/profile       - Perfil del usuario');
+  console.log('   👤 POST /users/profile       - Actualizar perfil');
+  console.log('   📊 GET  /dashboard           - Dashboard principal');
   console.log('\n💡 Usuarios de prueba:');
-  console.log('   👨‍⚕️ dr.martinez / 123456');
-  console.log('   👩‍⚕️ dra.garcia / 123456');
+  console.log('   👨‍⚕️ dr.martinez / 123456');
+  console.log('   👩‍⚕️ dra.garcia / 123456');
 });
 
-module.exports = app;
+export default app; // ⬅️ CAMBIADO: module.exports a export default

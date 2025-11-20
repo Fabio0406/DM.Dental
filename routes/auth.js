@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const AuthController = require('../controllers/authController');
-const { redirectIfAuth } = require('../middleware/auth');
+import AuthController from '../controllers/authController.js'; // ⬅️ CAMBIADO y añadido .js
+import { redirectIfAuth } from '../middleware/auth.js';      // ⬅️ CAMBIADO y añadido .js
 
 // GET /auth/login - Mostrar formulario de login
 router.get('/login', redirectIfAuth, AuthController.showLogin);
@@ -20,7 +20,7 @@ router.post('/logout', AuthController.logout);
 
 // Redirigir /auth a /auth/login
 router.get('/', (req, res) => {
-  res.redirect('/auth/login');
+  res.redirect('/auth/login');
 });
 
-module.exports = router;
+export default router; // ⬅️ CAMBIADO: module.exports a export default

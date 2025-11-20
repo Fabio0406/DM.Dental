@@ -23,7 +23,8 @@ const addUserToViews = (req, res, next) => {
   next();
 };
 
-module.exports = {
+// ⬅️ CAMBIADO: module.exports a export con nombre
+export {
   requireAuth,
   redirectIfAuth,
   addUserToViews

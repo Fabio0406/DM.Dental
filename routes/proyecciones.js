@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const proyeccionController = require('../controllers/proyeccionController');
-const { requireAuth } = require('../middleware/auth');
-const { uploadPaciente } = require('../config/multer'); // ✅ Importación directa
+import proyeccionController from '../controllers/proyeccionController.js'; // ⬅️ CAMBIADO y añadido .js
+import { requireAuth } from '../middleware/auth.js';                  // ⬅️ CAMBIADO y añadido .js
+import { uploadPaciente } from '../config/multer.js';               // ⬅️ CAMBIADO y añadido .js
 
 /**
  * Rutas para Proyecciones Dentales
@@ -36,4 +36,4 @@ router.get('/:id/descargar', requireAuth, proyeccionController.descargarProyecci
 // DELETE /proyecciones/:id - Eliminar proyección
 router.delete('/:id', requireAuth, proyeccionController.eliminarProyeccion);
 
-module.exports = router;
+export default router; // ⬅️ CAMBIADO: module.exports a export default

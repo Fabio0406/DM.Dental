@@ -1,5 +1,5 @@
-const Dashboard = require('../models/Dashboard');
-const Alerta = require('../models/Alerta');
+import Dashboard from '../models/Dashboard.js'; // ⬅️ CAMBIADO: require() a import, añadido .js
+import Alerta from '../models/Alerta.js';     // ⬅️ CAMBIADO: require() a import, añadido .js
 
 class DashboardController {
   static showDashboard = async (req, res) => {
@@ -71,4 +71,4 @@ class DashboardController {
   };
 }
 
-module.exports = DashboardController;
+export default DashboardController; // ⬅️ CAMBIADO: module.exports a export default

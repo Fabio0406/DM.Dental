@@ -1,5 +1,5 @@
-const sharp = require('sharp');
-const path = require('path');
+import sharp from 'sharp'; // ⬅️ CAMBIADO: require() a import
+import path from 'path';   // ⬅️ CAMBIADO: require() a import
 
 /**
  * Servicio de Detección Facial - FASE 1
@@ -8,7 +8,7 @@ const path = require('path');
  */
 
 class FaceDetectionService {
-  
+
   /**
    * Detecta la región de la boca en una imagen
    * @param {string} imagePath - Ruta de la imagen
@@ -18,34 +18,34 @@ class FaceDetectionService {
     try {
       const image = sharp(imagePath);
       const metadata = await image.metadata();
-      
+
       // FASE 1: Estimación basada en proporciones faciales estándar
       // En una foto frontal de sonrisa, la boca suele estar:
       // - Horizontalmente: centro de la imagen (con margen)
       // - Verticalmente: en el tercio inferior del rostro
-      
+
       const width = metadata.width;
       const height = metadata.height;
-      
+
       // Región estimada de la boca (ROI - Region of Interest)
       const mouthRegion = {
         // Centro horizontal con 40% del ancho
         left: Math.floor(width * 0.3),
         width: Math.floor(width * 0.4),
-        
+
         // Tercio inferior con 20% de altura
         top: Math.floor(height * 0.55),
         height: Math.floor(height * 0.25),
-        
+
         // Coordenadas del centro
         centerX: Math.floor(width * 0.5),
         centerY: Math.floor(height * 0.67),
-        
+
         // Dimensiones originales
         imageWidth: width,
         imageHeight: height
       };
-      
+
       return {
         success: true,
         region: mouthRegion,
@@ -56,7 +56,7 @@ class FaceDetectionService {
           method: 'estimation_phase1'
         }
       };
-      
+
     } catch (error) {
       console.error('Error en detección facial:', error);
       return {
@@ -82,7 +82,7 @@ class FaceDetectionService {
           height: region.height
         })
         .toBuffer();
-        
+
     } catch (error) {
       console.error('Error al extraer región:', error);
       throw error;
@@ -97,33 +97,33 @@ class FaceDetectionService {
   static async validarImagen(imagePath) {
     try {
       const metadata = await sharp(imagePath).metadata();
-      
+
       const validacion = {
         valida: true,
         problemas: []
       };
-      
+
       // Verificar dimensiones mínimas
       if (metadata.width < 400 || metadata.height < 400) {
         validacion.valida = false;
         validacion.problemas.push('La imagen es demasiado pequeña (mínimo 400x400px)');
       }
-      
+
       // Verificar que no sea demasiado grande
       if (metadata.width > 4000 || metadata.height > 4000) {
         validacion.problemas.push('La imagen es muy grande, se redimensionará');
       }
-      
+
       // Verificar formato
       const formatosPermitidos = ['jpeg', 'jpg', 'png', 'webp'];
       if (!formatosPermitidos.includes(metadata.format)) {
         validacion.valida = false;
         validacion.problemas.push('Formato de imagen no soportado');
       }
-      
+
       validacion.metadata = metadata;
       return validacion;
-      
+
     } catch (error) {
       return {
         valida: false,
@@ -143,7 +143,7 @@ class FaceDetectionService {
         path.extname(imagePath),
         '_preprocessed' + path.extname(imagePath)
       );
-      
+
       await sharp(imagePath)
         .resize(1200, 1200, {
           fit: 'inside',
@@ -152,9 +152,9 @@ class FaceDetectionService {
         .normalize() // Normalizar contraste
         .sharpen() // Aumentar nitidez
         .toFile(outputPath);
-      
+
       return outputPath;
-      
+
     } catch (error) {
       console.error('Error en preprocesamiento:', error);
       throw error;
@@ -170,28 +170,28 @@ class FaceDetectionService {
   static async analizarCalidadSonrisa(imagePath) {
     try {
       const stats = await sharp(imagePath).stats();
-      
+
       // Analizar brillo promedio (luminosidad)
       const brightness = (
-        stats.channels[0].mean + 
-        stats.channels[1].mean + 
+        stats.channels[0].mean +
+        stats.channels[1].mean +
         stats.channels[2].mean
       ) / 3;
-      
+
       // Analizar contraste (desviación estándar)
       const contrast = (
-        stats.channels[0].stdev + 
-        stats.channels[1].stdev + 
+        stats.channels[0].stdev +
+        stats.channels[1].stdev +
         stats.channels[2].stdev
       ) / 3;
-      
+
       return {
         brightness: brightness,
         contrast: contrast,
         quality: brightness > 100 && contrast > 30 ? 'buena' : 'regular',
         recomendaciones: this.generarRecomendaciones(brightness, contrast)
       };
-      
+
     } catch (error) {
       console.error('Error en análisis de calidad:', error);
       return null;
@@ -203,23 +203,23 @@ class FaceDetectionService {
    */
   static generarRecomendaciones(brightness, contrast) {
     const recomendaciones = [];
-    
+
     if (brightness < 80) {
       recomendaciones.push('La imagen está muy oscura');
     } else if (brightness > 180) {
       recomendaciones.push('La imagen está muy brillante');
     }
-    
+
     if (contrast < 20) {
       recomendaciones.push('La imagen tiene poco contraste');
     }
-    
+
     if (recomendaciones.length === 0) {
       recomendaciones.push('Imagen óptima para procesamiento');
     }
-    
+
     return recomendaciones;
   }
 }
 
-module.exports = FaceDetectionService;
+export default FaceDetectionService; // ⬅️ CAMBIADO: module.exports a export default

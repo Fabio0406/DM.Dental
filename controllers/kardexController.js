@@ -1,4 +1,7 @@
-const Kardex = require('../models/Kardex');
+// Importaciones de módulos (convertidas a ESM)
+import Kardex from '../models/Kardex.js'; // ⬅️ CAMBIADO
+// Importación de la conexión a la base de datos (movida al inicio)
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO y movido
 
 class KardexController {
   // Mostrar lista de kardex
@@ -51,8 +54,8 @@ class KardexController {
       }
 
       // MODIFICADO: Obtener nombre del responsable (usuario que aperturó el kardex)
-      let responsable = req.session.user.nombres + " "+req.session.user.apellidos;
-     
+      let responsable = req.session.user.nombres + " " + req.session.user.apellidos;
+
 
       res.render('kardex/ver', {
         title: `Kardex: ${kardex.codigo} - ${kardex.nombre_generico}`,
@@ -79,9 +82,8 @@ class KardexController {
 
       const historial = await Kardex.obtenerHistorialKardex(parseInt(id));
 
-      // Obtener información básica del insumo
-      const { pool } = require('../config/database');
-      const insumoResult = await pool.query(
+      // Obtener información básica del insumo usando el pool importado al inicio
+      const insumoResult = await pool.query( // ⬅️ IMPORTACIÓN CORREGIDA
         'SELECT codigo, nombre_generico, presentacion FROM insumos WHERE id_insumo = $1',
         [id]
       );
@@ -134,8 +136,8 @@ class KardexController {
       const { id_insumo, gestion, ubicacion } = req.body;
 
       if (!id_insumo || !gestion || !ubicacion) {
-        return res.status(400).json({ 
-          error: 'Faltan datos requeridos: id_insumo, gestion, ubicacion' 
+        return res.status(400).json({
+          error: 'Faltan datos requeridos: id_insumo, gestion, ubicacion'
         });
       }
 
@@ -181,4 +183,4 @@ class KardexController {
   };
 }
 
-module.exports = KardexController;
+export default KardexController; // ⬅️ CAMBIADO: module.exports a export default

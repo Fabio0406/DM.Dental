@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const OCRController = require('../controllers/ocrController');
-const { requireAuth } = require('../middleware/auth');
-const uploadFormulario = require('../config/multer');
+import OCRController from '../controllers/ocrController.js';        // ⬅️ CAMBIADO y añadido .js
+import { requireAuth } from '../middleware/auth.js';               // ⬅️ CAMBIADO y añadido .js
+import uploadFormulario from '../config/multer.js';                // ⬅️ CAMBIADO y añadido .js
 
 // Aplicar middleware de autenticación a todas las rutas
 router.use(requireAuth);
@@ -22,4 +22,4 @@ router.get('/review/:id', OCRController.showReview);
 // POST /ocr/confirmar/:id - Confirmar e importar al inventario
 router.post('/confirmar/:id', OCRController.confirmarImportar);
 
-module.exports = router;
+export default router; // ⬅️ CAMBIADO: module.exports a export default

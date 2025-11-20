@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const UserController = require('../controllers/userController');
-const { requireAuth } = require('../middleware/auth');
+import UserController from '../controllers/userController.js'; // ⬅️ CAMBIADO y añadido .js
+import { requireAuth } from '../middleware/auth.js';          // ⬅️ CAMBIADO y añadido .js
 
 // Aplicar middleware de autenticación a todas las rutas de usuarios
 router.use(requireAuth);
@@ -14,7 +14,7 @@ router.post('/profile', UserController.updateProfile);
 
 // Redirigir /users a /users/profile
 router.get('/', (req, res) => {
-  res.redirect('/users/profile');
+  res.redirect('/users/profile');
 });
 
-module.exports = router;
+export default router; // ⬅️ CAMBIADO: module.exports a export default

@@ -1,5 +1,5 @@
-const { pool } = require('../config/database');
-const bcrypt = require('bcryptjs');
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO: require() a import, añadido .js
+import bcrypt from 'bcryptjs';               // ⬅️ CAMBIADO: require() a import
 
 class User {
   // Buscar usuario por username
@@ -31,18 +31,18 @@ class User {
   // Crear nuevo usuario
   static async create(userData) {
     const { username, password, email, nombres, apellidos, ci, telefono, numero_licencia } = userData;
-    
+
     try {
       // Hashear contraseña
       const hashedPassword = await bcrypt.hash(password, 10);
-      
+
       const result = await pool.query(
         `INSERT INTO usuarios (ci, username, password_hash, email, nombres, apellidos, telefono, numero_licencia) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING ci, username, email, nombres, apellidos`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+         RETURNING ci, username, email, nombres, apellidos`,
         [ci, username, hashedPassword, email, nombres, apellidos, telefono, numero_licencia]
       );
-      
+
       return result.rows[0];
     } catch (error) {
       throw new Error(`Error creando usuario: ${error.message}`);
@@ -64,27 +64,27 @@ class User {
   // Actualizar perfil de usuario
   static async updateProfile(ci, data) {
     const { nombres, apellidos, telefono, password } = data;
-    
+
     try {
       let query, params;
-      
+
       if (password) {
         // Si incluye contraseña, actualizar también el hash
         const hashedPassword = await bcrypt.hash(password, 10);
         query = `UPDATE usuarios 
-                 SET nombres = $1, apellidos = $2, telefono = $3, password_hash = $4 
-                 WHERE ci = $5 
-                 RETURNING ci, username, nombres, apellidos, telefono`;
+                 SET nombres = $1, apellidos = $2, telefono = $3, password_hash = $4 
+                 WHERE ci = $5 
+                 RETURNING ci, username, nombres, apellidos, telefono`;
         params = [nombres, apellidos, telefono, hashedPassword, ci];
       } else {
         // Solo datos de perfil
         query = `UPDATE usuarios 
-                 SET nombres = $1, apellidos = $2, telefono = $3 
-                 WHERE ci = $4 
-                 RETURNING ci, username, nombres, apellidos, telefono`;
+                 SET nombres = $1, apellidos = $2, telefono = $3 
+                 WHERE ci = $4 
+                 RETURNING ci, username, nombres, apellidos, telefono`;
         params = [nombres, apellidos, telefono, ci];
       }
-      
+
       const result = await pool.query(query, params);
       return result.rows[0];
     } catch (error) {
@@ -98,4 +98,4 @@ class User {
   }
 }
 
-module.exports = User;
+export default User; // ⬅️ CAMBIADO: module.exports a export default

@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO: require() a import, añadido .js
 
 class Formulario {
   // Crear nuevo formulario SALMI
@@ -8,9 +8,9 @@ class Formulario {
     try {
       const result = await pool.query(
         `INSERT INTO formularios_salmi 
-         (nro_formulario, fecha_elaboracion, imagen_path, representante, procesado) 
-         VALUES ($1, $2, $3, $4, FALSE) 
-         RETURNING *`,
+         (nro_formulario, fecha_elaboracion, imagen_path, representante, procesado) 
+         VALUES ($1, $2, $3, $4, FALSE) 
+         RETURNING *`,
         [
           nro_formulario || 'SALMI-TEMP',
           fecha_elaboracion || new Date().toISOString().split('T')[0],
@@ -56,11 +56,11 @@ class Formulario {
     try {
       const result = await pool.query(
         `UPDATE formularios_salmi 
-         SET nro_formulario = COALESCE($1, nro_formulario), 
-             fecha_elaboracion = COALESCE($2, fecha_elaboracion), 
-             responsable = COALESCE($3, responsable) 
-         WHERE id_formulario = $4 
-         RETURNING *`,
+         SET nro_formulario = COALESCE($1, nro_formulario), 
+             fecha_elaboracion = COALESCE($2, fecha_elaboracion), 
+             responsable = COALESCE($3, responsable) 
+         WHERE id_formulario = $4 
+         RETURNING *`,
         [datos.numero_formulario, datos.fecha_documento, datos.responsable_nombre, id]
       );
       return result.rows[0];
@@ -73,11 +73,10 @@ class Formulario {
   static async findByUser(userId, limit = 10) {
     try {
       const result = await pool.query(
-        `SELECT * 
-         FROM formularios_salmi 
-         WHERE representante = $1 
-         ORDER BY fecha_entrega DESC
-         LIMIT $2`,
+        `SELECT * FROM formularios_salmi 
+         WHERE representante = $1 
+         ORDER BY fecha_entrega DESC
+         LIMIT $2`,
         [userId, limit]
       );
       return result.rows;
@@ -90,10 +89,9 @@ class Formulario {
   static async findAll(limit = 50) {
     try {
       const result = await pool.query(
-        `SELECT * 
-         FROM formularios_salmi 
-         ORDER BY fecha_entrega DESC
-         LIMIT $1`,
+        `SELECT * FROM formularios_salmi 
+         ORDER BY fecha_entrega DESC
+         LIMIT $1`,
         [limit]
       );
       return result.rows;
@@ -103,4 +101,4 @@ class Formulario {
   }
 }
 
-module.exports = Formulario;
+export default Formulario; // ⬅️ CAMBIADO: module.exports a export 

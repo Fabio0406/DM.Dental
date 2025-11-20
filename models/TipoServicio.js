@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO: require() a import, añadido .js
 
 class TipoServicio {
   // Listar todos los servicios
@@ -6,13 +6,13 @@ class TipoServicio {
     try {
       const result = await pool.query(
         `SELECT 
-          s.id_servicio,
-          s.nombre,
-          c.id_categoria_servicio,
-          c.nombre as categoria_nombre
-         FROM servicio s
-         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
-         ORDER BY s.nombre`
+          s.id_servicio,
+          s.nombre,
+          c.id_categoria_servicio,
+          c.nombre as categoria_nombre
+         FROM servicio s
+         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
+         ORDER BY s.nombre`
       );
       console.log(result.rows)
       return result.rows;
@@ -26,13 +26,13 @@ class TipoServicio {
     try {
       const result = await pool.query(
         `SELECT 
-          s.id_servicio,
-          s.nombre,
-          c.id_categoria_servicio,
-          c.nombre as categoria_nombre
-         FROM servicio s
-         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
-         WHERE s.id_servicio = $1`,
+          s.id_servicio,
+          s.nombre,
+          c.id_categoria_servicio,
+          c.nombre as categoria_nombre
+         FROM servicio s
+         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
+         WHERE s.id_servicio = $1`,
         [id]
       );
       return result.rows[0];
@@ -46,14 +46,14 @@ class TipoServicio {
     try {
       const result = await pool.query(
         `SELECT 
-          s.id_servicio,
-          s.nombre,
-          c.id_categoria_servicio,
-          c.nombre as categoria_nombre
-         FROM servicio s
-         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
-         WHERE s.id_categoria = $1
-         ORDER BY s.nombre`,
+          s.id_servicio,
+          s.nombre,
+          c.id_categoria_servicio,
+          c.nombre as categoria_nombre
+         FROM servicio s
+         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
+         WHERE s.id_categoria = $1
+         ORDER BY s.nombre`,
         [idCategoria]
       );
       return result.rows;
@@ -75,4 +75,4 @@ class TipoServicio {
   }
 }
 
-module.exports = TipoServicio;
+export default TipoServicio; // ⬅️ CAMBIADO: module.exports a export default

@@ -1,5 +1,9 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+// 1. Configuración de .env
+import 'dotenv/config'; 
+
+// 2. Importación de pg
+import pkg from 'pg';
+const { Pool } = pkg;
 
 const pool = new Pool({
   host: process.env.DB_HOST,

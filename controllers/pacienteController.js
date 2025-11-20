@@ -1,8 +1,11 @@
-const Paciente = require('../models/Paciente');
-const ImagenPaciente = require('../models/ImagenPaciente');
-const ProyeccionDental = require('../models/ProyeccionDental');
-const path = require('path');
-const fs = require('fs').promises;
+// Importaciones de módulos locales (Añadir .js y usar import)
+import Paciente from '../models/Paciente.js';
+import ImagenPaciente from '../models/ImagenPaciente.js';
+import ProyeccionDental from '../models/ProyeccionDental.js';
+
+// Importaciones de módulos nativos de Node.js
+import path from 'path';
+import { promises as fs } from 'fs'; // Usamos desestructuración para el objeto promises de fs
 
 /**
  * Controlador de Gestión de Pacientes
@@ -144,7 +147,7 @@ const pacienteController = {
           parametros_ia: p.parametros_ia ? JSON.parse(p.parametros_ia) : null
         }));
 
-        
+
       }
       console.log(paciente.proyecciones)
 
@@ -362,4 +365,4 @@ const pacienteController = {
 
 };
 
-module.exports = pacienteController;
+export default pacienteController; // ⬅️ CAMBIADO: module.exports a export default

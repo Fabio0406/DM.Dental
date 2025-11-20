@@ -1,15 +1,15 @@
-const { pool } = require('../config/database');
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO: require() a import, añadido .js
 
 class ImagenPaciente {
-  
+
   // Guardar imagen del paciente
   static async crear(datos) {
     const query = `
-      INSERT INTO imagenes_paciente 
-      (id_paciente, ruta_imagen, tipo_imagen, descripcion, id_usuario)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
-    `;
+      INSERT INTO imagenes_paciente 
+      (id_paciente, ruta_imagen, tipo_imagen, descripcion, id_usuario)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `;
     console.log("estos datos me llegan para crear imagen")
     console.log(datos)
     const values = [
@@ -19,7 +19,7 @@ class ImagenPaciente {
       datos.descripcion || null,
       datos.id_usuario || null
     ];
-    
+
     const result = await pool.query(query, values);
     return result.rows[0];
   }
@@ -27,11 +27,11 @@ class ImagenPaciente {
   // Obtener todas las imágenes de un paciente
   static async obtenerPorPaciente(pacienteId) {
     const query = `
-      SELECT * FROM imagenes_paciente
-      WHERE id_paciente = $1
-      ORDER BY fecha_captura DESC
-    `;
-    
+      SELECT * FROM imagenes_paciente
+      WHERE id_paciente = $1
+      ORDER BY fecha_captura DESC
+    `;
+
     const result = await pool.query(query, [pacienteId]);
     return result.rows;
   }
@@ -39,12 +39,12 @@ class ImagenPaciente {
   // Obtener imagen más reciente del paciente (simula "principal")
   static async obtenerPrincipal(pacienteId) {
     const query = `
-      SELECT * FROM imagenes_paciente
-      WHERE id_paciente = $1
-      ORDER BY fecha_captura DESC
-      LIMIT 1
-    `;
-    
+      SELECT * FROM imagenes_paciente
+      WHERE id_paciente = $1
+      ORDER BY fecha_captura DESC
+      LIMIT 1
+    `;
+
     const result = await pool.query(query, [pacienteId]);
     return result.rows[0];
   }
@@ -71,4 +71,4 @@ class ImagenPaciente {
   }
 }
 
-module.exports = ImagenPaciente;
+export default ImagenPaciente; // ⬅️ CAMBIADO: module.exports a export default

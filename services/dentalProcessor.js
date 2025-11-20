@@ -1,8 +1,8 @@
 // ============================================
 // DEPENDENCIAS ORIGINALES (COMENTADAS TEMPORALMENTE)
 // ============================================
-// const sharp = require('sharp');
-// const path = require('path');
+// import sharp from 'sharp'; // Necesario si descomentas la lógica
+// import path from 'path';   // Necesario si descomentas la lógica
 
 /**
  * Servicio de Procesamiento Dental
@@ -11,7 +11,7 @@
  */
 
 class DentalProcessorService {
-  
+
   // ============================================
   // CÓDIGO ORIGINAL COMENTADO
   // ============================================
@@ -219,4 +219,4 @@ class DentalProcessorService {
   }
 }
 
-module.exports = DentalProcessorService;
+export default DentalProcessorService; // ⬅️ CAMBIADO: module.exports a export default

@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const ConsumoController = require('../controllers/consumoController');
-const { requireAuth } = require('../middleware/auth');
+import ConsumoController from '../controllers/consumoController.js'; // ⬅️ CAMBIADO y añadido .js
+import { requireAuth } from '../middleware/auth.js';                // ⬅️ CAMBIADO y añadido .js
 
 // Aplicar middleware de autenticación a todas las rutas
 router.use(requireAuth);
@@ -23,4 +23,4 @@ router.post('/api/lotes-vencidos/notificar', ConsumoController.marcarLotesVencid
 router.post('/registro', ConsumoController.processRegistro);
 router.post('/api/ajuste', ConsumoController.registrarAjuste);
 
-module.exports = router;
+export default router; // ⬅️ CAMBIADO: module.exports a export default

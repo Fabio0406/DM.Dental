@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const DashboardController = require('../controllers/dashboardController');
-const { requireAuth } = require('../middleware/auth');
+import DashboardController from '../controllers/dashboardController.js'; // ⬅️ CAMBIADO y añadido .js
+import { requireAuth } from '../middleware/auth.js';                // ⬅️ CAMBIADO y añadido .js
 
 // Aplicar middleware de autenticación
 router.use(requireAuth);
@@ -9,4 +9,4 @@ router.use(requireAuth);
 // GET /dashboard - Mostrar dashboard principal
 router.get('/', DashboardController.showDashboard);
 
-module.exports = router;
+export default router; // ⬅️ CAMBIADO: module.exports a export default

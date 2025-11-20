@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO: require() a import, añadido .js
 
 class Insumo {
   // Buscar insumo por código
@@ -19,14 +19,14 @@ class Insumo {
     try {
       const result = await pool.query(
         `SELECT 
-          i.*,
-          c.nombre as categoria_nombre,
-          COALESCE(SUM(l.aplicaciones_disponibles), 0) as aplicaciones_totales
-         FROM insumos i
-         LEFT JOIN categorias_insumo c ON i.id_categoria = c.id_categoria
-         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0
-         WHERE i.id_insumo = $1
-         GROUP BY i.id_insumo, c.nombre`,
+          i.*,
+          c.nombre as categoria_nombre,
+          COALESCE(SUM(l.aplicaciones_disponibles), 0) as aplicaciones_totales
+         FROM insumos i
+         LEFT JOIN categorias_insumo c ON i.id_categoria = c.id_categoria
+         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0
+         WHERE i.id_insumo = $1
+         GROUP BY i.id_insumo, c.nombre`,
         [idInsumo]
       );
       return result.rows[0];
@@ -40,14 +40,14 @@ class Insumo {
     try {
       const result = await pool.query(
         `SELECT 
-          i.*,
-          COALESCE(SUM(l.aplicaciones_disponibles), 0) as aplicaciones_totales
-         FROM insumos i
-         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0
-         WHERE LOWER(i.nombre_generico) LIKE LOWER($1)
-         GROUP BY i.id_insumo
-         ORDER BY LENGTH(i.nombre_generico)
-         LIMIT 5`,
+          i.*,
+          COALESCE(SUM(l.aplicaciones_disponibles), 0) as aplicaciones_totales
+         FROM insumos i
+         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0
+         WHERE LOWER(i.nombre_generico) LIKE LOWER($1)
+         GROUP BY i.id_insumo
+         ORDER BY LENGTH(i.nombre_generico)
+         LIMIT 5`,
         [`%${nombre}%`]
       );
       return result.rows;
@@ -61,14 +61,14 @@ class Insumo {
     try {
       const result = await pool.query(
         `SELECT 
-          i.*,
-          c.nombre as categoria_nombre,
-          COALESCE(SUM(l.aplicaciones_disponibles), 0) as aplicaciones_totales
-         FROM insumos i
-         LEFT JOIN categorias_insumo c ON i.id_categoria = c.id_categoria
-         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0
-         GROUP BY i.id_insumo, c.nombre
-         ORDER BY i.nombre_generico`
+          i.*,
+          c.nombre as categoria_nombre,
+          COALESCE(SUM(l.aplicaciones_disponibles), 0) as aplicaciones_totales
+         FROM insumos i
+         LEFT JOIN categorias_insumo c ON i.id_categoria = c.id_categoria
+         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0
+         GROUP BY i.id_insumo, c.nombre
+         ORDER BY i.nombre_generico`
       );
       return result.rows;
     } catch (error) {
@@ -78,12 +78,12 @@ class Insumo {
 
   // Crear nuevo insumo
   static async create(insumoData) {
-    const { 
-      codigo, 
-      nombre_generico, 
-      forma_farmaceutica, 
-      concentracion, 
-      presentacion, 
+    const {
+      codigo,
+      nombre_generico,
+      forma_farmaceutica,
+      concentracion,
+      presentacion,
       unidad_medida,
       aplicaciones_minimas,
       rendimiento_teorico,
@@ -91,21 +91,21 @@ class Insumo {
       id_categoria,
       imagen_url
     } = insumoData;
-    
+
     try {
       const result = await pool.query(
         `INSERT INTO insumos 
-         (codigo, nombre_generico, forma_farmaceutica, concentracion, presentacion, 
-          unidad_medida, aplicaciones_minimas, rendimiento_teorico, costo_unitario, 
-          id_categoria, imagen_url) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-         RETURNING *`,
+         (codigo, nombre_generico, forma_farmaceutica, concentracion, presentacion, 
+          unidad_medida, aplicaciones_minimas, rendimiento_teorico, costo_unitario, 
+          id_categoria, imagen_url) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+         RETURNING *`,
         [
-          codigo, 
-          nombre_generico, 
-          forma_farmaceutica, 
-          concentracion, 
-          presentacion, 
+          codigo,
+          nombre_generico,
+          forma_farmaceutica,
+          concentracion,
+          presentacion,
           unidad_medida,
           aplicaciones_minimas || 10,
           rendimiento_teorico || 1,
@@ -114,7 +114,7 @@ class Insumo {
           imagen_url
         ]
       );
-      
+
       return result.rows[0];
     } catch (error) {
       throw new Error(`Error creando insumo: ${error.message}`);
@@ -126,8 +126,8 @@ class Insumo {
     try {
       const result = await pool.query(
         `SELECT COALESCE(SUM(aplicaciones_disponibles), 0) as total
-         FROM lotes
-         WHERE id_insumo = $1 AND aplicaciones_disponibles > 0`,
+         FROM lotes
+         WHERE id_insumo = $1 AND aplicaciones_disponibles > 0`,
         [idInsumo]
       );
       return parseInt(result.rows[0].total);
@@ -141,9 +141,9 @@ class Insumo {
     try {
       const result = await pool.query(
         `SELECT *
-         FROM lotes
-         WHERE id_insumo = $1 AND aplicaciones_disponibles > 0
-         ORDER BY fecha_vencimiento ASC, id_lote ASC`,
+         FROM lotes
+         WHERE id_insumo = $1 AND aplicaciones_disponibles > 0
+         ORDER BY fecha_vencimiento ASC, id_lote ASC`,
         [idInsumo]
       );
       return result.rows;
@@ -156,26 +156,26 @@ class Insumo {
   static async checkStock(idInsumo, aplicacionesRequeridas) {
     try {
       const aplicacionesDisponibles = await this.getAplicacionesDisponibles(idInsumo);
-      
+
       const insumo = await pool.query(
         'SELECT nombre_generico FROM insumos WHERE id_insumo = $1',
         [idInsumo]
       );
-      
+
       if (insumo.rows.length === 0) {
         return { disponible: false, error: 'Insumo no encontrado' };
       }
-      
+
       const { nombre_generico } = insumo.rows[0];
-      
+
       if (aplicacionesDisponibles >= aplicacionesRequeridas) {
-        return { 
-          disponible: true, 
-          aplicacionesDisponibles: aplicacionesDisponibles 
+        return {
+          disponible: true,
+          aplicacionesDisponibles: aplicacionesDisponibles
         };
       } else {
-        return { 
-          disponible: false, 
+        return {
+          disponible: false,
           error: `Stock insuficiente. Disponible: ${aplicacionesDisponibles}, Requerido: ${aplicacionesRequeridas}`,
           aplicacionesDisponibles: aplicacionesDisponibles,
           nombreInsumo: nombre_generico
@@ -191,15 +191,15 @@ class Insumo {
     try {
       const result = await pool.query(
         `SELECT 
-          i.*,
-          c.nombre as categoria_nombre,
-          COALESCE(SUM(l.aplicaciones_disponibles), 0) as aplicaciones_totales
-         FROM insumos i
-         LEFT JOIN categorias_insumo c ON i.id_categoria = c.id_categoria
-         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0
-         GROUP BY i.id_insumo, c.nombre
-         HAVING COALESCE(SUM(l.aplicaciones_disponibles), 0) <= i.aplicaciones_minimas
-         ORDER BY COALESCE(SUM(l.aplicaciones_disponibles), 0) ASC`
+          i.*,
+          c.nombre as categoria_nombre,
+          COALESCE(SUM(l.aplicaciones_disponibles), 0) as aplicaciones_totales
+         FROM insumos i
+         LEFT JOIN categorias_insumo c ON i.id_categoria = c.id_categoria
+         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0
+         GROUP BY i.id_insumo, c.nombre
+         HAVING COALESCE(SUM(l.aplicaciones_disponibles), 0) <= i.aplicaciones_minimas
+         ORDER BY COALESCE(SUM(l.aplicaciones_disponibles), 0) ASC`
       );
       return result.rows;
     } catch (error) {
@@ -208,4 +208,4 @@ class Insumo {
   }
 }
 
-module.exports = Insumo;
+export default Insumo; // ⬅️ CAMBIADO: module.exports a export default

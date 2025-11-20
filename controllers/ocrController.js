@@ -1,11 +1,17 @@
-const Tesseract = require('tesseract.js');
-const sharp = require('sharp');
-const path = require('path');
-const fs = require('fs');
+// 1. Importaciones de módulos externos y nativos (Convertidas a ESM)
+import Tesseract from 'tesseract.js';
+import sharp from 'sharp';
+import path from 'path';
+import * as fs from 'fs'; // Usamos import * as fs para usar fs.existsSync, fs.unlinkSync, etc.
 
-const Formulario = require('../models/Formulario');
-const Insumo = require('../models/Insumo');
-const Kardex = require('../models/Kardex');
+// 2. Importaciones de modelos locales (Convertidas a ESM y añadido .js)
+import Formulario from '../models/Formulario.js';
+import Insumo from '../models/Insumo.js';
+import Kardex from '../models/Kardex.js';
+
+// 3. Importación del Pool de Base de Datos (Convertida y movida al inicio)
+import { pool } from '../config/database.js';
+
 
 class OCRController {
   // Mostrar página de upload
@@ -183,7 +189,7 @@ class OCRController {
 
   // CORREGIDO: Confirmar e importar al inventario
   static confirmarImportar = async (req, res) => {
-    const client = await require('../config/database').pool.connect();
+    const client = await pool.connect(); // ⬅️ IMPORTACIÓN CORREGIDA
     try {
       await client.query('BEGIN');
 
@@ -231,10 +237,10 @@ class OCRController {
           } else {
             const nuevo = await client.query(
               `INSERT INTO insumos 
-             (codigo, nombre_generico, forma_farmaceutica, concentracion, presentacion, 
-              unidad_medida, rendimiento_teorico, aplicaciones_minimas, costo_unitario, id_categoria)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             RETURNING id_insumo`,
+             (codigo, nombre_generico, forma_farmaceutica, concentracion, presentacion, 
+              unidad_medida, rendimiento_teorico, aplicaciones_minimas, costo_unitario, id_categoria)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             RETURNING id_insumo`,
               [
                 codigo,
                 nombre,
@@ -277,9 +283,9 @@ class OCRController {
         if (kardexCheck.rows.length === 0) {
           const nuevoKardex = await client.query(
             `INSERT INTO kardex 
-           (id_insumo, numero_kardex, gestion, ubicacion, abierto, fecha_apertura)
-           VALUES ($1, (SELECT COALESCE(MAX(numero_kardex), 0) + 1 FROM kardex WHERE id_insumo = $1), $2, $3, TRUE, CURRENT_TIMESTAMP)
-           RETURNING id_kardex`,
+           (id_insumo, numero_kardex, gestion, ubicacion, abierto, fecha_apertura)
+           VALUES ($1, (SELECT COALESCE(MAX(numero_kardex), 0) + 1 FROM kardex WHERE id_insumo = $1), $2, $3, TRUE, CURRENT_TIMESTAMP)
+           RETURNING id_kardex`,
             [idInsumo, gestionActual, 'Almacén Principal']
           );
           idKardex = nuevoKardex.rows[0].id_kardex;
@@ -290,10 +296,10 @@ class OCRController {
         // PASO 3: Crear lote
         const loteInsert = await client.query(
           `INSERT INTO lotes 
-         (id_insumo, id_formulario, numero_lote, fecha_vencimiento, 
-          cantidad_insumos, aplicaciones_disponibles, costo_total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id_lote`,
+         (id_insumo, id_formulario, numero_lote, fecha_vencimiento, 
+          cantidad_insumos, aplicaciones_disponibles, costo_total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id_lote`,
           [
             idInsumo,
             formularioId,
@@ -309,18 +315,18 @@ class OCRController {
         // PASO 4: Saldos
         const saldoAnterior = await client.query(
           `SELECT COALESCE(SUM(aplicaciones_disponibles), 0) as total 
-         FROM lotes 
-         WHERE id_insumo = $1 AND id_lote != $2`,
+         FROM lotes 
+         WHERE id_insumo = $1 AND id_lote != $2`,
           [idInsumo, idLote]
         );
         const saldoAplicaciones = parseInt(saldoAnterior.rows[0].total) + aplicacionesTotal;
 
         const valoradoAnterior = await client.query(
           `SELECT saldo_valorado 
-         FROM detalle_kardex 
-         WHERE id_kardex = $1 
-         ORDER BY id_detalle DESC 
-         LIMIT 1`,
+         FROM detalle_kardex 
+         WHERE id_kardex = $1 
+         ORDER BY id_detalle DESC 
+         LIMIT 1`,
           [idKardex]
         );
         const saldoValoradoAnterior = valoradoAnterior.rows.length > 0
@@ -331,9 +337,9 @@ class OCRController {
         // PASO 5: Registrar movimiento
         await client.query(
           `INSERT INTO detalle_kardex 
-         (id_kardex, id_lote, fecha, entradas, salidas, ajustes, saldo, 
-          clave_doc, recibido_de, recepcionado_por, costo_unitario, saldo_valorado)
-         VALUES ($1, $2, CURRENT_TIMESTAMP, $3, 0, 0, $4, $5, $6, $7, $8, $9)`,
+         (id_kardex, id_lote, fecha, entradas, salidas, ajustes, saldo, 
+          clave_doc, recibido_de, recepcionado_por, costo_unitario, saldo_valorado)
+         VALUES ($1, $2, CURRENT_TIMESTAMP, $3, 0, 0, $4, $5, $6, $7, $8, $9)`,
           [
             idKardex,
             idLote,
@@ -353,8 +359,8 @@ class OCRController {
       // PASO FINAL: Actualizar formulario con sede
       await client.query(
         `UPDATE formularios_salmi 
-       SET procesado = TRUE, total = $1, sede = $2, fecha_entrega = CURRENT_TIMESTAMP
-       WHERE id_formulario = $3`,
+       SET procesado = TRUE, total = $1, sede = $2, fecha_entrega = CURRENT_TIMESTAMP
+       WHERE id_formulario = $3`,
         [itemsProcesados, sede, formularioId]
       );
 
@@ -375,4 +381,4 @@ class OCRController {
   };
 }
 
-module.exports = OCRController;
+export default OCRController; // ⬅️ CAMBIADO: module.exports a export default

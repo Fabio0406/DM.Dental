@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const pacienteController = require('../controllers/pacienteController');
-const { requireAuth } = require('../middleware/auth');
-const { uploadPaciente } = require('../config/multer'); // ✅ Importación directa
+import pacienteController from '../controllers/pacienteController.js'; // ⬅️ CAMBIADO y añadido .js
+import { requireAuth } from '../middleware/auth.js';                  // ⬅️ CAMBIADO y añadido .js
+import { uploadPaciente } from '../config/multer.js';               // ⬅️ CAMBIADO y añadido .js
 
 /**
  * Rutas para Gestión de Pacientes
@@ -51,4 +51,4 @@ router.post(
 // GET /pacientes/buscar - Buscar pacientes (API)
 router.get('/buscar', requireAuth, pacienteController.buscarPacientes);
 
-module.exports = router;
+export default router; // ⬅️ CAMBIADO: module.exports a export default

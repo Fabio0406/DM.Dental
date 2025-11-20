@@ -1,8 +1,11 @@
-const session = require('express-session');
-const pgSession = require('connect-pg-simple')(session);
-const { pool } = require('./database');
+// 1. Importaciones de módulos principales
+import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import { pool } from './database.js'; // Asegúrate de añadir la extensión .js
 
-module.exports = session({
+const pgSession = connectPgSimple(session);
+
+export default session({
   store: new pgSession({
     pool: pool,
     tableName: 'user_sessions',
