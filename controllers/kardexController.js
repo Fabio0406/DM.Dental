@@ -1,7 +1,8 @@
 // Importaciones de módulos (convertidas a ESM)
 import Kardex from '../models/Kardex.js'; // ⬅️ CAMBIADO
-// Importación de la conexión a la base de datos (movida al inicio)
-import { pool } from '../config/database.js'; // ⬅️ CAMBIADO y movido
+import puppeteer from 'puppeteer';
+import path from 'path';
+import { promises as fs } from 'fs';
 
 class KardexController {
   // Mostrar lista de kardex
