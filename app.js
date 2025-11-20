@@ -20,6 +20,7 @@ import kardexRoutes from './routes/kardex.js';
 import pacientesRoutes from './routes/pacientes.js';
 import proyeccionesRoutes from './routes/proyecciones.js';
 import alertasRoutes from './routes/alertas.js';
+import solicitudesRoutes from './routes/solicitudes.js';
 
 // Usar __dirname en ES Modules
 import { fileURLToPath } from 'url';
@@ -81,6 +82,7 @@ app.use('/kardex', kardexRoutes);
 app.use('/pacientes', pacientesRoutes);
 app.use('/proyecciones', proyeccionesRoutes);
 app.use('/alertas', alertasRoutes);
+app.use('/solicitudes', solicitudesRoutes);
 
 // Ruta raíz - redirigir según estado de autenticación
 app.get('/', (req, res) => {
@@ -121,21 +123,22 @@ app.use((req, res, next) => {
 app.listen(PORT, async () => {
   console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
   console.log(`🏥 Sistema Odontológico DM-5 - Entorno: ${process.env.NODE_ENV}`);
-
+  
   // Probar conexión a la base de datos
   await testConnection();
-
+  
   console.log('\n📋 Rutas disponibles:');
-  console.log('   🏠 GET  /                    - Página principal');
-  console.log('   🔐 GET  /auth/login          - Formulario de login');
-  console.log('   🔐 POST /auth/login          - Procesar login');
-  console.log('   🚪 POST /auth/logout         - Cerrar sesión');
-  console.log('   👤 GET  /users/profile       - Perfil del usuario');
-  console.log('   👤 POST /users/profile       - Actualizar perfil');
-  console.log('   📊 GET  /dashboard           - Dashboard principal');
+  console.log('   🏠 GET  /                    - Página principal');
+  console.log('   🔐 GET  /auth/login          - Formulario de login');
+  console.log('   🔐 POST /auth/login          - Procesar login');
+  console.log('   🚪 POST /auth/logout         - Cerrar sesión');
+  console.log('   👤 GET  /users/profile       - Perfil del usuario');
+  console.log('   👤 POST /users/profile       - Actualizar perfil');
+  console.log('   📊 GET  /dashboard           - Dashboard principal');
   console.log('\n💡 Usuarios de prueba:');
-  console.log('   👨‍⚕️ dr.martinez / 123456');
-  console.log('   👩‍⚕️ dra.garcia / 123456');
+  console.log('   👨‍⚕️ dr.martinez / 123456');
+  console.log('   👩‍⚕️ dra.garcia / 123456');
 });
+
 
 export default app; // ⬅️ CAMBIADO: module.exports a export default
