@@ -3,6 +3,7 @@ const router = express.Router();
 import KardexController from '../controllers/kardexController.js'; // ⬅️ CAMBIADO y añadido .js
 import { requireAuth } from '../middleware/auth.js';              // ⬅️ CAMBIADO y añadido .js
 
+
 // Aplicar autenticación a todas las rutas
 router.use(requireAuth);
 
@@ -11,6 +12,9 @@ router.get('/', KardexController.showLista);
 
 // GET /kardex/ver/:id - Ver Kardex actual
 router.get('/ver/:id', KardexController.showVer);
+
+// GET /kardex/exportar/:id - Exportar Kardex a PDF
+router.get('/exportar/:id', KardexController.exportarPDF);
 
 // GET /kardex/historial/:id - Ver historial
 router.get('/historial/:id', KardexController.showHistorial);

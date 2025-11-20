@@ -2,7 +2,6 @@
   "name": "proyecto-dm5",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
@@ -33,6 +32,7 @@
     "lucide": "^0.553.0",
     "multer": "^2.0.2",
     "pg": "^8.16.3",
+    "puppeteer": "^24.31.0",
     "sharp": "^0.34.4",
     "tesseract.js": "^6.0.1",
     "uuid": "^13.0.0"

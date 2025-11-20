@@ -1,0 +1,248 @@
+<% 
+const body = `
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3><i data-lucide="plus-circle"></i> Nueva Solicitud de Pedido</h3>
+                    <p class="text-muted mb-0">Crear solicitud de insumos odontológicos</p>
+                </div>
+                <a href="/solicitudes" class="btn btn-outline-secondary">
+                    <i data-lucide="arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    ${locals.error ? `
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i data-lucide="alert-circle"></i> ${error}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    ` : ''}
+
+    <form id="formSolicitud" method="POST" action="/solicitudes">
+        <!-- Selector de insumos -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i data-lucide="package-plus"></i> Agregar Insumos</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label">Seleccionar Insumo</label>
+                                <select class="form-select" id="selectInsumo">
+                                    <option value="">-- Seleccione un insumo --</option>
+                                    ${insumos.map(ins => 
+                                        `<option value="${ins.id_insumo}" 
+                                                data-codigo="${ins.codigo}"
+                                                data-nombre="${ins.nombre_generico}"
+                                                data-presentacion="${ins.presentacion || 'Unidad'}"
+                                                data-precio="${ins.costo_unitario || 0}">
+                                            ${ins.codigo} - ${ins.nombre_generico}
+                                        </option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Cantidad</label>
+                                <input type="number" class="form-control" id="inputCantidad" 
+                                       min="1" value="1" placeholder="Cantidad">
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-success w-100" onclick="agregarInsumo()">
+                                    <i data-lucide="plus"></i> Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de items agregados -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i data-lucide="list"></i> Items de la Solicitud</h6>
+                        <span class="badge bg-primary" id="totalItems">0 items</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered mb-0" id="tablaItems">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 50px;">Item</th>
+                                        <th style="width: 100px;">Código</th>
+                                        <th>Detalle</th>
+                                        <th style="width: 100px;">Unidad</th>
+                                        <th style="width: 80px;">Cantidad</th>
+                                        <th style="width: 120px;">P. Unitario</th>
+                                        <th style="width: 120px;">P. Total</th>
+                                        <th style="width: 60px;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyItems">
+                                    <tr id="filaVacia">
+                                        <td colspan="8" class="text-center py-4 text-muted">
+                                            No hay insumos agregados. Seleccione un insumo y haga clic en Agregar.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="6" class="text-end"><strong>TOTAL GENERAL:</strong></td>
+                                        <td class="text-end"><strong id="totalGeneral">Bs. 0.00</strong></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="row mt-4">
+            <div class="col-12 text-end">
+                <a href="/solicitudes" class="btn btn-secondary me-2">
+                    <i data-lucide="x"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary" id="btnGuardar" disabled>
+                    <i data-lucide="save"></i> Guardar Solicitud
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Reinicializar Lucide icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+    let items = [];
+    let itemCounter = 0;
+
+    function agregarInsumo() {
+        const select = document.getElementById('selectInsumo');
+        const cantidad = parseInt(document.getElementById('inputCantidad').value) || 0;
+
+        if (!select.value) {
+            alert('Seleccione un insumo');
+            return;
+        }
+
+        if (cantidad <= 0) {
+            alert('La cantidad debe ser mayor a 0');
+            return;
+        }
+
+        const option = select.options[select.selectedIndex];
+        const idInsumo = parseInt(select.value);
+        
+        // Verificar si ya existe
+        if (items.find(i => i.id_insumo === idInsumo)) {
+            alert('Este insumo ya está en la lista');
+            return;
+        }
+
+        const precio = parseFloat(option.dataset.precio) || 0;
+        const total = precio * cantidad;
+
+        const item = {
+            id_insumo: idInsumo,
+            codigo: option.dataset.codigo,
+            nombre: option.dataset.nombre,
+            presentacion: option.dataset.presentacion,
+            cantidad: cantidad,
+            precio_unitario: precio,
+            precio_total: total
+        };
+
+        items.push(item);
+        itemCounter++;
+        renderizarTabla();
+
+        // Limpiar selección
+        select.value = '';
+        document.getElementById('inputCantidad').value = 1;
+    }
+
+    function eliminarItem(idInsumo) {
+        items = items.filter(i => i.id_insumo !== idInsumo);
+        renderizarTabla();
+    }
+
+    function renderizarTabla() {
+        const tbody = document.getElementById('tbodyItems');
+        const filaVacia = document.getElementById('filaVacia');
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr id="filaVacia"><td colspan="8" class="text-center py-4 text-muted">No hay insumos agregados. Seleccione un insumo y haga clic en Agregar.</td></tr>';
+            document.getElementById('totalItems').textContent = '0 items';
+            document.getElementById('totalGeneral').textContent = 'Bs. 0.00';
+            document.getElementById('btnGuardar').disabled = true;
+            return;
+        }
+
+        let html = '';
+        let totalGeneral = 0;
+
+        items.forEach((item, index) => {
+            totalGeneral += item.precio_total;
+            html += '<tr>' +
+                '<td class="text-center">' + (index + 1) + '</td>' +
+                '<td><code>' + item.codigo + '</code></td>' +
+                '<td>' + item.nombre + '</td>' +
+                '<td class="text-center">' + item.presentacion + '</td>' +
+                '<td class="text-center">' + item.cantidad + '</td>' +
+                '<td class="text-end">' + formatearMoneda(item.precio_unitario) + '</td>' +
+                '<td class="text-end">' + formatearMoneda(item.precio_total) + '</td>' +
+                '<td class="text-center">' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarItem(' + item.id_insumo + ')">' +
+                        '<i data-lucide="trash-2"></i>' +
+                    '</button>' +
+                '</td>' +
+                '<input type="hidden" name="detalles[' + index + '][id_insumo]" value="' + item.id_insumo + '">' +
+                '<input type="hidden" name="detalles[' + index + '][cantidad]" value="' + item.cantidad + '">' +
+                '<input type="hidden" name="detalles[' + index + '][costo_total]" value="' + item.precio_total + '">' +
+                '</tr>';
+        });
+
+        tbody.innerHTML = html;
+        document.getElementById('totalItems').textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
+        document.getElementById('totalGeneral').textContent = formatearMoneda(totalGeneral);
+        document.getElementById('btnGuardar').disabled = false;
+
+        // Reinicializar iconos
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
+    function formatearMoneda(valor) {
+        return 'Bs. ' + valor.toLocaleString('es-BO', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    // Validar antes de enviar
+    document.getElementById('formSolicitud').addEventListener('submit', function(e) {
+        if (items.length === 0) {
+            e.preventDefault();
+            alert('Debe agregar al menos un insumo a la solicitud');
+        }
+    });
+</script>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

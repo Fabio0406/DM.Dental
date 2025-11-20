@@ -1,0 +1,150 @@
+<% 
+const formatearFecha = (fecha) => {
+    if (!fecha) return 'N/A';
+    const d = new Date(fecha);
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const anio = d.getFullYear();
+    return `${dia}/${mes}/${anio}`;
+};
+
+const formatearMoneda = (valor) => {
+    return new Intl.NumberFormat('es-BO', { 
+        style: 'currency', 
+        currency: 'BOB',
+        minimumFractionDigits: 2 
+    }).format(valor || 0);
+};
+
+const body = `
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3><i data-lucide="file-text"></i> Mis Solicitudes de Pedido</h3>
+                    <p class="text-muted mb-0">Gestión de solicitudes de insumos odontológicos</p>
+                </div>
+                <a href="/solicitudes/nueva" class="btn btn-primary">
+                    <i data-lucide="plus"></i> Nueva Solicitud
+                </a>
+            </div>
+        </div>
+    </div>
+
+    ${locals.success ? `
+        <div class="alert alert-success alert-dismissible fade show">
+            <i data-lucide="check-circle"></i> ${success}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    ` : ''}
+
+    ${locals.error ? `
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i data-lucide="alert-circle"></i> ${error}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    ` : ''}
+
+    <!-- Tabla de solicitudes -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i data-lucide="list"></i> Solicitudes (${solicitudes.length})</h6>
+                </div>
+                <div class="card-body p-0">
+                    ${solicitudes.length === 0 ? `
+                        <div class="text-center py-5">
+                            <i data-lucide="inbox" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
+                            <h5 class="text-muted">No tiene solicitudes registradas</h5>
+                            <p class="text-muted">Cree su primera solicitud de pedido</p>
+                            <a href="/solicitudes/nueva" class="btn btn-primary">
+                                <i data-lucide="plus"></i> Nueva Solicitud
+                            </a>
+                        </div>
+                    ` : `
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>N° Solicitud</th>
+                                        <th>Fecha</th>
+                                        <th>Material</th>
+                                        <th class="text-center">Items</th>
+                                        <th class="text-end">Total</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${solicitudes.map(sol => `
+                                        <tr>
+                                            <td>
+                                                <strong>${sol.nro_solicitud}</strong>
+                                            </td>
+                                            <td>${formatearFecha(sol.fecha)}</td>
+                                            <td>
+                                                <span class="badge bg-info">${sol.material}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-secondary">${sol.total_items}</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <strong>${formatearMoneda(sol.total_general)}</strong>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="/solicitudes/ver/${sol.id_solicitud}" 
+                                                       class="btn btn-outline-primary" title="Ver">
+                                                        <i data-lucide="eye"></i>
+                                                    </a>
+                                                    <a href="/solicitudes/editar/${sol.id_solicitud}" 
+                                                       class="btn btn-outline-warning" title="Editar">
+                                                        <i data-lucide="edit"></i>
+                                                    </a>
+                                                    <a href="/solicitudes/exportar/${sol.id_solicitud}" 
+                                                       class="btn btn-outline-success" title="Exportar PDF" target="_blank">
+                                                        <i data-lucide="file-down"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="modalEliminar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de eliminar la solicitud <strong id="nroSolicitudEliminar"></strong>?</p>
+                <p class="text-danger"><small>Esta acción no se puede deshacer.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminar" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script externo para la lógica de lista -->
+<script src="/js/solicitud-lista.js"></script>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

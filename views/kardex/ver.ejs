@@ -8,6 +8,15 @@ const formatearFecha = (fecha) => {
     return `${dia}/${mes}/${anio}`;
 };
 
+const formatearFechaInput = (fecha) => {
+    if (!fecha) return '';
+    const d = new Date(fecha);
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const anio = d.getFullYear();
+    return `${anio}-${mes}-${dia}`;
+};
+
 const formatearMoneda = (valor) => {
     return new Intl.NumberFormat('es-BO', { 
         style: 'currency', 
@@ -22,15 +31,15 @@ const body = `
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h3><i class="bi bi-file-earmark-text"></i> Kardex Valorado</h3>
+                    <h3><i data-lucide="file-text"></i> Kardex Valorado</h3>
                     <p class="text-muted mb-0">${kardex.nombre_generico}</p>
                 </div>
                 <div class="btn-group">
                     <a href="/kardex/historial/${kardex.id_insumo}" class="btn btn-outline-primary">
-                        <i class="bi bi-journal-medical"></i> Ver Historial
+                        <i data-lucide="history"></i> Ver Historial
                     </a>
                     <a href="/kardex" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Volver
+                        <i data-lucide="arrow-left"></i> Volver
                     </a>
                 </div>
             </div>
@@ -42,16 +51,16 @@ const body = `
         <div class="col-12">
             <div class="card">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-journal-text"></i> Información del Kardex</h5>
+                    <h5 class="mb-0"><i data-lucide="info"></i> Información del Kardex</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <strong>Código:</strong><br>
                             <code class="fs-5">${kardex.codigo}</code>
                         </div>
-                        <div class="col-md-3">
-                            <strong>Número de Kardex:</strong><br>
+                        <div class="col-md-2">
+                            <strong>N° de Kardex:</strong><br>
                             <span class="badge bg-info fs-6">${kardex.numero_kardex}</span>
                         </div>
                         <div class="col-md-2">
@@ -59,26 +68,72 @@ const body = `
                             <span class="fs-5">${kardex.gestion}</span>
                         </div>
                         <div class="col-md-2">
+                            <strong>Forma Farmacéutica:</strong><br>
+                            ${kardex.forma_farmaceutica || 'N/A'}
+                        </div>
+                        <div class="col-md-2">
+                            <strong>Concentración:</strong><br>
+                            ${kardex.concentracion || 'N/A'}
+                        </div>
+                        <div class="col-md-2">
+                            <strong>Ubicación:</strong><br>
+                            ${kardex.ubicacion || 'N/A'}
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
                             <strong>Fecha Apertura:</strong><br>
                             ${formatearFecha(kardex.fecha_apertura)}
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <strong>Responsable:</strong><br>
                             ${responsable || 'N/A'}
                         </div>
                     </div>
-                    
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabla de movimientos (Kardex Valorado) -->
+    <!-- Filtros de Fecha -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i data-lucide="filter"></i> Filtrar por Fecha</h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="/kardex/ver/${kardex.id_insumo}" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" name="fecha_inicio" 
+                                   value="${filtros.fecha_inicio || ''}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" name="fecha_fin" 
+                                   value="${filtros.fecha_fin || ''}">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i data-lucide="search"></i> Filtrar
+                            </button>
+                            <a href="/kardex/ver/${kardex.id_insumo}" class="btn btn-outline-secondary">
+                                <i data-lucide="x"></i> Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de movimientos (Kardex Valorado) - Formato SNUS-01 -->
     <div class="row">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Movimientos del Kardex</h6>
+                    <h6 class="mb-0"><i data-lucide="table"></i> Movimientos del Kardex</h6>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -86,18 +141,18 @@ const body = `
                             <thead class="table-light">
                                 <tr class="text-center">
                                     <th rowspan="2" style="vertical-align: middle;">FECHA</th>
-                                    <th rowspan="2" style="vertical-align: middle;">N° Y CLAVE<br>DOC</th>
-                                    <th colspan="3">MOVIMIENTOS EN APLICACIONES</th>
+                                    <th colspan="3">MOVIMIENTOS</th>
                                     <th rowspan="2" style="vertical-align: middle;">SALDO</th>
-                                    <th rowspan="2" style="vertical-align: middle;">N° LOTE</th>
-                                    <th rowspan="2" style="vertical-align: middle;">FECHA VTO</th>
+                                    <th rowspan="2" style="vertical-align: middle;">N° Y CLAVE<br>DOC</th>
+                                    <th rowspan="2" style="vertical-align: middle;">RECIBIDO DE:<br>EXPEDIDO A:</th>
                                     <th rowspan="2" style="vertical-align: middle;">COSTO<br>UNITARIO</th>
-                                    <th rowspan="2" style="vertical-align: middle;">SALDO<br>VALORIZADO</th>
-                                    <th rowspan="2" style="vertical-align: middle;">RECIBIDO DE /<br>EXPEDIDO POR</th>
+                                    <th rowspan="2" style="vertical-align: middle;">SALDO<br>VALORADO</th>
+                                    <th rowspan="2" style="vertical-align: middle;">FECHA<br>VTO.</th>
+                                    <th rowspan="2" style="vertical-align: middle;">No.<br>LOTE</th>
                                 </tr>
                                 <tr class="text-center">
-                                    <th>ENTRADA</th>
-                                    <th>SALIDA</th>
+                                    <th>ENTRADAS</th>
+                                    <th>SALIDAS</th>
                                     <th>AJUSTES<br>(+/-)</th>
                                 </tr>
                             </thead>
@@ -105,26 +160,28 @@ const body = `
                                 ${kardex.movimientos && kardex.movimientos.length > 0 ? kardex.movimientos.map(mov => `
                                     <tr>
                                         <td class="text-center">${formatearFecha(mov.fecha)}</td>
-                                        <td class="text-center">
-                                            <small>${mov.clave_doc || '-'}</small>
-                                        </td>
                                         <td class="text-end ${mov.entradas > 0 ? 'bg-success bg-opacity-10' : ''}">
-                                            ${mov.entradas > 0 ? mov.entradas : '-'}
+                                            ${mov.entradas > 0 ? mov.entradas : ''}
                                         </td>
                                         <td class="text-end ${mov.salidas > 0 ? 'bg-danger bg-opacity-10' : ''}">
-                                            ${mov.salidas > 0 ? mov.salidas : '-'}
+                                            ${mov.salidas > 0 ? mov.salidas : ''}
                                         </td>
                                         <td class="text-end ${mov.ajustes != 0 ? 'bg-warning bg-opacity-10' : ''}">
-                                            ${mov.ajustes != 0 ? (mov.saldo_valorado = 0 ? '+' : '-') + mov.ajustes : '-'}
+                                            ${mov.ajustes != 0 ? (mov.ajustes > 0 ? '+' : '') + mov.ajustes : ''}
                                         </td>
                                         <td class="text-end">
                                             <strong>${mov.saldo}</strong>
                                         </td>
                                         <td class="text-center">
-                                            <small><code>${mov.numero_lote || '-'}</code></small>
+                                            <small>${mov.clave_doc || ''}</small>
                                         </td>
-                                        <td class="text-center">
-                                            <small>${formatearFecha(mov.fecha_vencimiento)}</small>
+                                        <td>
+                                            <small>
+                                                ${mov.entradas > 0 ? 
+                                                    (mov.recibido_de || 'FIM') : 
+                                                    responsable
+                                                }
+                                            </small>
                                         </td>
                                         <td class="text-end">
                                             <small>${formatearMoneda(mov.costo_unitario)}</small>
@@ -132,13 +189,11 @@ const body = `
                                         <td class="text-end">
                                             <strong>${formatearMoneda(mov.saldo_valorado)}</strong>
                                         </td>
-                                        <td>
-                                            <small>
-                                                ${mov.entradas != 0  ? 
-                                                    `<strong>De:</strong> ${mov.recibido_de || 'FIM'}` : 
-                                                    `<strong>Por:</strong> ${responsable}`
-                                                }
-                                            </small>
+                                        <td class="text-center">
+                                            <small>${formatearFecha(mov.fecha_vencimiento)}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <small><code>${mov.numero_lote || ''}</code></small>
                                         </td>
                                     </tr>
                                 `).join('') : `
@@ -156,18 +211,23 @@ const body = `
         </div>
     </div>
 
-    <!-- Botón para exportar (futuro) -->
+    <!-- Botones de exportación -->
     <div class="row mt-3">
         <div class="col-12 text-end">
-            <button class="btn btn-success" disabled>
-                <i class="bi bi-file-earmark-pdf"></i> Exportar a PDF (Próximamente)
-            </button>
-            <button class="btn btn-success" disabled>
-                <i class="bi bi-file-earmark-excel"></i> Exportar a Excel (Próximamente)
-            </button>
+            <a href="/kardex/exportar/${kardex.id_insumo}?fecha_inicio=${filtros.fecha_inicio || ''}&fecha_fin=${filtros.fecha_fin || ''}" 
+               class="btn btn-success" target="_blank">
+                <i data-lucide="file-down"></i> Exportar a PDF
+            </a>
         </div>
     </div>
 </div>
+
+<script>
+    // Reinicializar Lucide icons después de cargar el contenido dinámico
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+</script>
 `;
 %>
 
