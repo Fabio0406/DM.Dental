@@ -6,31 +6,7 @@ class Protocolo {
     try {
       // MODIFICADO: Agregar filtro de fecha_vencimiento >= CURRENT_DATE
       const result = await pool.query(
-        `SELECT 
-          si.id_servicio,
-          si.id_insumo,
-          si.aplicaciones_por_servicio,
-          i.codigo,
-          i.nombre_generico,
-          i.presentacion,
-          i.unidad_medida,
-          i.imagen_url,
-          i.rendimiento_teorico,
-          i.aplicaciones_minimas,
-          l.id_lote,
-          l.numero_lote,
-          l.fecha_vencimiento,
-          l.aplicaciones_disponibles as stock_lote,
-          l.cantidad_insumos as cantidad_fisica,
-          l.costo_total,
-          ROW_NUMBER() OVER (PARTITION BY si.id_insumo ORDER BY l.fecha_vencimiento ASC, l.id_lote ASC) as lote_orden
-         FROM servicio_insumos si
-         INNER JOIN insumos i ON si.id_insumo = i.id_insumo
-         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo 
-           AND l.aplicaciones_disponibles > 0
-           AND l.fecha_vencimiento >= CURRENT_DATE
-         WHERE si.id_servicio = $1
-         ORDER BY i.nombre_generico, l.fecha_vencimiento ASC`,
+        `SELECT si.id_servicio, si.id_insumo, si.aplicaciones_por_servicio, i.codigo, i.nombre_generico, i.presentacion, i.unidad_medida, i.imagen_url, i.rendimiento_teorico, i.aplicaciones_minimas, l.id_lote, l.numero_lote, l.fecha_vencimiento, l.aplicaciones_disponibles AS stock_lote, l.cantidad_insumos AS cantidad_fisica, l.costo_total, ROW_NUMBER() OVER (PARTITION BY si.id_insumo ORDER BY l.fecha_vencimiento ASC, l.id_lote ASC) AS lote_orden FROM servicio_insumos si INNER JOIN insumos i ON si.id_insumo = i.id_insumo LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0 AND l.fecha_vencimiento >= CURRENT_DATE WHERE si.id_servicio = $1 ORDER BY i.nombre_generico, l.fecha_vencimiento ASC`,
         [idServicio]
       );
 
@@ -93,24 +69,7 @@ class Protocolo {
   static async getLotesVencidosServicio(idServicio) {
     try {
       const result = await pool.query(
-        `SELECT DISTINCT
-          l.id_lote,
-          l.numero_lote,
-          l.fecha_vencimiento,
-          l.aplicaciones_disponibles,
-          i.id_insumo,
-          i.codigo,
-          i.nombre_generico,
-          i.presentacion,
-          (CURRENT_DATE - l.fecha_vencimiento) as dias_vencido
-         FROM servicio_insumos si
-         INNER JOIN insumos i ON si.id_insumo = i.id_insumo
-         INNER JOIN lotes l ON i.id_insumo = l.id_insumo
-         WHERE si.id_servicio = $1
-           AND l.fecha_vencimiento < CURRENT_DATE
-           AND l.aplicaciones_disponibles > 0
-           AND l.vencimiento_notificado = FALSE
-         ORDER BY l.fecha_vencimiento ASC`,
+        `SELECT DISTINCT l.id_lote, l.numero_lote, l.fecha_vencimiento, l.aplicaciones_disponibles, i.id_insumo, i.codigo, i.nombre_generico, i.presentacion, (CURRENT_DATE - l.fecha_vencimiento) AS dias_vencido FROM servicio_insumos si INNER JOIN insumos i ON si.id_insumo = i.id_insumo INNER JOIN lotes l ON i.id_insumo = l.id_insumo WHERE si.id_servicio = $1 AND l.fecha_vencimiento < CURRENT_DATE AND l.aplicaciones_disponibles > 0 AND l.vencimiento_notificado = FALSE ORDER BY l.fecha_vencimiento ASC`,
         [idServicio]
       );
       return result.rows;
@@ -128,11 +87,7 @@ class Protocolo {
       for (const protocolo of protocolos) {
         // MODIFICADO: Calcular stock total del insumo (solo lotes NO vencidos)
         const stockTotal = await pool.query(
-          `SELECT COALESCE(SUM(aplicaciones_disponibles), 0) as total
-           FROM lotes
-           WHERE id_insumo = $1 
-             AND aplicaciones_disponibles > 0
-             AND fecha_vencimiento >= CURRENT_DATE`,
+          `SELECT COALESCE(SUM(aplicaciones_disponibles), 0) AS total FROM lotes WHERE id_insumo = $1 AND aplicaciones_disponibles > 0 AND fecha_vencimiento >= CURRENT_DATE`,
           [protocolo.id_insumo]
         );
 
@@ -159,11 +114,7 @@ class Protocolo {
   static async getTotalAplicaciones(idInsumo) {
     try {
       const result = await pool.query(
-        `SELECT COALESCE(SUM(aplicaciones_disponibles), 0) as total
-         FROM lotes
-         WHERE id_insumo = $1 
-           AND aplicaciones_disponibles > 0
-           AND fecha_vencimiento >= CURRENT_DATE`,
+        `SELECT COALESCE(SUM(aplicaciones_disponibles), 0) AS total FROM lotes WHERE id_insumo = $1 AND aplicaciones_disponibles > 0 AND fecha_vencimiento >= CURRENT_DATE`,
         [idInsumo]
       );
       return parseInt(result.rows[0].total);

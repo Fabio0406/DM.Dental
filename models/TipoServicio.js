@@ -5,14 +5,7 @@ class TipoServicio {
   static async findAll() {
     try {
       const result = await pool.query(
-        `SELECT 
-          s.id_servicio,
-          s.nombre,
-          c.id_categoria_servicio,
-          c.nombre as categoria_nombre
-         FROM servicio s
-         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
-         ORDER BY s.nombre`
+        `SELECT s.id_servicio, s.nombre, c.id_categoria_servicio, c.nombre AS categoria_nombre FROM servicio s LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio ORDER BY s.nombre`
       );
       console.log(result.rows)
       return result.rows;
@@ -25,14 +18,7 @@ class TipoServicio {
   static async findById(id) {
     try {
       const result = await pool.query(
-        `SELECT 
-          s.id_servicio,
-          s.nombre,
-          c.id_categoria_servicio,
-          c.nombre as categoria_nombre
-         FROM servicio s
-         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
-         WHERE s.id_servicio = $1`,
+        `SELECT s.id_servicio, s.nombre, c.id_categoria_servicio, c.nombre AS categoria_nombre FROM servicio s LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio WHERE s.id_servicio = $1`,
         [id]
       );
       return result.rows[0];
@@ -45,15 +31,7 @@ class TipoServicio {
   static async findByCategoria(idCategoria) {
     try {
       const result = await pool.query(
-        `SELECT 
-          s.id_servicio,
-          s.nombre,
-          c.id_categoria_servicio,
-          c.nombre as categoria_nombre
-         FROM servicio s
-         LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio
-         WHERE s.id_categoria = $1
-         ORDER BY s.nombre`,
+        `SELECT s.id_servicio, s.nombre, c.id_categoria_servicio, c.nombre AS categoria_nombre FROM servicio s LEFT JOIN categorias_servicio c ON s.id_categoria = c.id_categoria_servicio WHERE s.id_categoria = $1 ORDER BY s.nombre`,
         [idCategoria]
       );
       return result.rows;
