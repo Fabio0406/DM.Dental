@@ -30,4 +30,4 @@ router.post('/eliminar/:id', SolicitudController.eliminar);
 // GET /solicitudes/exportar/:id - Exportar PDF
 router.get('/exportar/:id', SolicitudController.exportarPDF);
 
-module.exports = router;
+export default router;
