@@ -2,7 +2,7 @@ import express from 'express';
 const router = express.Router();
 import OCRController from '../controllers/ocrController.js';        // ⬅️ CAMBIADO y añadido .js
 import { requireAuth } from '../middleware/auth.js';               // ⬅️ CAMBIADO y añadido .js
-import uploadFormulario from '../config/multer.js';                // ⬅️ CAMBIADO y añadido .js
+import { uploadFormulario } from '../config/multer.js';          // ⬅️ CAMBIADO y añadido .js
 
 // Aplicar middleware de autenticación a todas las rutas
 router.use(requireAuth);
