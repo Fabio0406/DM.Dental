@@ -1,7 +1,12 @@
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { promises as fs } from 'fs';
+import { promises as fs } from 'fs'; // Para operaciones asíncronas de archivos/directorios
+
+// Usar __dirname en ES Modules
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ============================================
 // CONFIGURACIÓN PARA FORMULARIOS (OCR)
@@ -40,9 +45,8 @@ const storagePacientes = multer.diskStorage({
   filename: function (req, file, cb) {
     const timestamp = Date.now();
     const ext = path.extname(file.originalname);
-    const nombreBase = path.basename(file.originalname, ext); // Extrae "mi_foto_a"
+    const nombreBase = path.basename(file.originalname, ext);
     cb(null, `${nombreBase}_${timestamp}${ext}`);
-    // Resultado: mi_foto_a_1698765432.jpg ✓ Conserva "_a"
   }
 });
 
@@ -60,7 +64,7 @@ const imageFileFilter = function (req, file, cb) {
 };
 
 // ============================================
-// MIDDLEWARE PARA FORMULARIOS
+// MIDDLEWARE PARA FORMULARIOS (Exportado con nombre)
 // ============================================
 const uploadFormulario = multer({
   storage: storageFormularios,
@@ -71,7 +75,7 @@ const uploadFormulario = multer({
 });
 
 // ============================================
-// MIDDLEWARE PARA PACIENTES
+// MIDDLEWARE PARA PACIENTES (Exportado con nombre)
 // ============================================
 const uploadPaciente = multer({
   storage: storagePacientes,
@@ -82,13 +86,12 @@ const uploadPaciente = multer({
 });
 
 // ============================================
-// EXPORTACIÓN COMPATIBLE CON TODO
+// EXPORTACIÓN CORREGIDA (100% ESM - Exportaciones con nombre)
 // ============================================
-
-// Exportación por defecto (para routes/ocr.js)
-module.exports = uploadFormulario;
-
-// Named exports (para routes/pacientes.js y proyecciones.js)
-module.exports.uploadFormulario = uploadFormulario;
-module.exports.uploadPaciente = uploadPaciente;
-module.exports.uploadProyeccion = uploadPaciente; // Reutilizamos la config
+// Esto resuelve el error "does not provide an export named 'uploadFormulario'"
+export {
+  uploadFormulario,
+  uploadPaciente,
+  // Alias para compatibilidad con rutas de proyecciones
+  uploadPaciente as uploadProyeccion
+};
