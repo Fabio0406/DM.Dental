@@ -2,7 +2,7 @@
 import Kardex from '../models/Kardex.js'; // ⬅️ CAMBIADO
 import puppeteer from 'puppeteer';
 import path from 'path';
-import { promises as fs } from 'fs';
+import fs from 'fs';
 
 class KardexController {
   // Mostrar lista de kardex

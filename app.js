@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import 'dotenv/config'; // ⬅️ CAMBIADO: require('dotenv').config() a import 'dotenv/config'
-import { promises as fs } from 'fs';
+import fs from 'fs';   // ⬅️ CAMBIADO: require() a import
 
 // Importar configuraciones (Añadir .js)
 import sessionConfig from './config/session.js';
