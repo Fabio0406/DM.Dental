@@ -7,8 +7,8 @@ class Alerta {
     try {
       const result = await pool.query(
         `INSERT INTO alertas (titulo, mensaje, id_usuario, id_insumo)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
+        VALUES ($1, $2, $3, $4)
+        RETURNING *`,
         [titulo, mensaje, id_usuario, id_insumo || null]
       );
       return result.rows[0];
@@ -21,14 +21,7 @@ class Alerta {
   static async getNoLeidas(idUsuario) {
     try {
       const result = await pool.query(
-        `SELECT 
-          a.*,
-          i.codigo,
-          i.nombre_generico
-         FROM alertas a
-         LEFT JOIN insumos i ON a.id_insumo = i.id_insumo
-         WHERE a.id_usuario = $1 AND a.leida = FALSE
-         ORDER BY a.fecha_creacion DESC`,
+        `SELECT a.*,i.codigo,i.nombre_generico FROM alertas a LEFT JOIN insumos i ON a.id_insumo = i.id_insumo WHERE a.id_usuario = $1 AND a.leida = FALSE ORDER BY a.fecha_creacion DESC`,
         [idUsuario]
       );
       return result.rows;
@@ -41,9 +34,7 @@ class Alerta {
   static async contarNoLeidas(idUsuario) {
     try {
       const result = await pool.query(
-        `SELECT COUNT(*) as total
-         FROM alertas
-         WHERE id_usuario = $1 AND leida = FALSE`,
+        `SELECT COUNT(*) as total FROM alertas WHERE id_usuario = $1 AND leida = FALSE`,
         [idUsuario]
       );
       return parseInt(result.rows[0].total);
@@ -69,9 +60,7 @@ class Alerta {
   static async marcarTodasLeidas(idUsuario) {
     try {
       const result = await pool.query(
-        `UPDATE alertas SET leida = TRUE 
-         WHERE id_usuario = $1 AND leida = FALSE
-         RETURNING *`,
+        `UPDATE alertas SET leida = TRUE WHERE id_usuario = $1 AND leida = FALSE RETURNING *`,
         [idUsuario]
       );
       return result.rows;
@@ -84,15 +73,7 @@ class Alerta {
   static async getHistorial(idUsuario, limite = 50) {
     try {
       const result = await pool.query(
-        `SELECT 
-          a.*,
-          i.codigo,
-          i.nombre_generico
-         FROM alertas a
-         LEFT JOIN insumos i ON a.id_insumo = i.id_insumo
-         WHERE a.id_usuario = $1
-         ORDER BY a.fecha_creacion DESC
-         LIMIT $2`,
+        `SELECT a.*, i.codigo, i.nombre_generico FROM alertas a LEFT JOIN insumos i ON a.id_insumo = i.id_insumo WHERE a.id_usuario = $1 ORDER BY a.fecha_creacion DESC LIMIT $2`,
         [idUsuario, limite]
       );
       return result.rows;
@@ -105,18 +86,7 @@ class Alerta {
   static async generarAlertasDesabastecimiento(idUsuario) {
     try {
       const result = await pool.query(
-        `SELECT 
-          i.id_insumo,
-          i.codigo,
-          i.nombre_generico,
-          i.aplicaciones_minimas,
-          COALESCE(SUM(l.aplicaciones_disponibles), 0) as stock_actual
-         FROM insumos i
-         LEFT JOIN lotes l ON i.id_insumo = l.id_insumo 
-           AND l.aplicaciones_disponibles > 0
-           AND l.fecha_vencimiento >= CURRENT_DATE
-         GROUP BY i.id_insumo
-         HAVING COALESCE(SUM(l.aplicaciones_disponibles), 0) <= i.aplicaciones_minimas`
+        `SELECT i.id_insumo, i.codigo, i.nombre_generico, i.aplicaciones_minimas, COALESCE(SUM(l.aplicaciones_disponibles), 0) AS stock_actual FROM insumos i LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0 AND l.fecha_vencimiento >= CURRENT_DATE GROUP BY i.id_insumo HAVING COALESCE(SUM(l.aplicaciones_disponibles), 0) <= i.aplicaciones_minimas`
       );
 
       const alertasGeneradas = [];
@@ -124,9 +94,7 @@ class Alerta {
       for (const insumo of result.rows) {
         // Verificar si ya existe una alerta no leída para este insumo
         const alertaExistente = await pool.query(
-          `SELECT id_alerta FROM alertas 
-           WHERE id_usuario = $1 AND id_insumo = $2 AND leida = FALSE
-           AND titulo LIKE '%Desabastecimiento%'`,
+          `SELECT id_alerta FROM alertas WHERE id_usuario = $1 AND id_insumo = $2 AND leida = FALSE AND titulo LIKE '%Desabastecimiento%'`,
           [idUsuario, insumo.id_insumo]
         );
 
@@ -152,21 +120,7 @@ class Alerta {
   static async generarAlertasVencimiento(idUsuario) {
     try {
       const result = await pool.query(
-        `SELECT 
-          l.id_lote,
-          l.numero_lote,
-          l.fecha_vencimiento,
-          l.aplicaciones_disponibles,
-          i.id_insumo,
-          i.codigo,
-          i.nombre_generico,
-          (l.fecha_vencimiento - CURRENT_DATE) as dias_restantes
-         FROM lotes l
-         INNER JOIN insumos i ON l.id_insumo = i.id_insumo
-         WHERE l.aplicaciones_disponibles > 0
-           AND l.fecha_vencimiento >= CURRENT_DATE
-           AND l.fecha_vencimiento <= CURRENT_DATE + INTERVAL '60 days'
-         ORDER BY l.fecha_vencimiento ASC`
+        `SELECT l.id_lote, l.numero_lote, l.fecha_vencimiento, l.aplicaciones_disponibles, i.id_insumo, i.codigo, i.nombre_generico, (l.fecha_vencimiento - CURRENT_DATE) AS dias_restantes FROM lotes l INNER JOIN insumos i ON l.id_insumo = i.id_insumo WHERE l.aplicaciones_disponibles > 0 AND l.fecha_vencimiento >= CURRENT_DATE AND l.fecha_vencimiento <= CURRENT_DATE + INTERVAL '60 days' ORDER BY l.fecha_vencimiento ASC`
       );
 
       const alertasGeneradas = [];
@@ -192,9 +146,7 @@ class Alerta {
 
         // Verificar si ya existe alerta para este lote
         const alertaExistente = await pool.query(
-          `SELECT id_alerta FROM alertas 
-           WHERE id_usuario = $1 AND leida = FALSE
-           AND mensaje LIKE $2`,
+          `SELECT id_alerta FROM alertas WHERE id_usuario = $1 AND leida = FALSE AND mensaje LIKE $2`,
           [idUsuario, `%Lote: ${lote.numero_lote}%`]
         );
 
@@ -220,16 +172,7 @@ class Alerta {
   static async getResumenAlertas(idUsuario) {
     try {
       const result = await pool.query(
-        `SELECT 
-          CASE 
-            WHEN titulo LIKE '%Desabastecimiento%' THEN 'desabastecimiento'
-            WHEN titulo LIKE '%Vencimiento%' OR titulo LIKE '%VENCIDO%' THEN 'vencimiento'
-            ELSE 'otro'
-          END as tipo,
-          COUNT(*) as cantidad
-         FROM alertas
-         WHERE id_usuario = $1 AND leida = FALSE
-         GROUP BY tipo`,
+        `SELECT CASE WHEN titulo LIKE '%Desabastecimiento%' THEN 'desabastecimiento' WHEN titulo LIKE '%Vencimiento%' OR titulo LIKE '%VENCIDO%' THEN 'vencimiento' ELSE 'otro' END AS tipo, COUNT(*) AS cantidad FROM alertas WHERE id_usuario = $1 AND leida = FALSE GROUP BY tipo`,
         [idUsuario]
       );
 
