@@ -44,7 +44,7 @@ class Insumo {
   static async findAll() {
     try {
       const result = await pool.query(
-        `SELECT i.*, c.nombre AS categoria_nombre, COALESCE(SUM(l.aplicaciones_disponibles), 0) AS aplicaciones_totales FROM insumos i LEFT JOIN categorias_insumo c ON i.id_categoria = c.id_categoria LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0 GROUP BY i.id_insumo, c.nombre ORDER BY i.nombre_generico`
+        `SELECT i.*, c.nombre AS categoria_nombre, COALESCE(SUM(l.aplicaciones_disponibles), 0) AS aplicaciones_totales FROM insumos i LEFT JOIN categorias_insumo c ON i.id_categoria = c.id_categoria_insumo LEFT JOIN lotes l ON i.id_insumo = l.id_insumo AND l.aplicaciones_disponibles > 0 GROUP BY i.id_insumo, c.nombre ORDER BY i.nombre_generico`
       );
       return result.rows;
     } catch (error) {
