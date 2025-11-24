@@ -1,5 +1,11 @@
-require('dotenv').config();
-const { pool } = require('../config/database');
+import 'dotenv/config'; // ⬅️ CAMBIADO: require('dotenv').config() a import 'dotenv/config'
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO: require() a import
+
+// CORRECCIÓN: Importar y definir __filename y __dirname para ESM
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Seed de Pacientes de Ejemplo
@@ -97,15 +103,15 @@ async function crearPacientes() {
       );
 
       if (existente.rows.length > 0) {
-        console.log(`⚠️  Paciente con CI ${paciente.ci} ya existe, omitiendo...`);
+        console.log(`⚠️  Paciente con CI ${paciente.ci} ya existe, omitiendo...`);
         continue;
       }
 
       // Insertar paciente
       const result = await client.query(
         `INSERT INTO pacientes (ci, nombres, apellidos, fecha_nacimiento, sexo, telefono, direccion)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING ci, nombres, apellidos`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING ci, nombres, apellidos`,
         [
           paciente.ci,
           paciente.nombres,
@@ -126,17 +132,17 @@ async function crearPacientes() {
 
     // Mostrar estadísticas
     const stats = await client.query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE sexo = 'masculino' OR sexo = 'M') as masculino,
-        COUNT(*) FILTER (WHERE sexo = 'femenino' OR sexo = 'F') as femenino
-      FROM pacientes
-    `);
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE sexo = 'masculino' OR sexo = 'M') as masculino,
+        COUNT(*) FILTER (WHERE sexo = 'femenino' OR sexo = 'F') as femenino
+      FROM pacientes
+    `);
 
     console.log('\n📈 Estadísticas del sistema:');
-    console.log(`   Total de pacientes: ${stats.rows[0].total}`);
-    console.log(`   Masculino: ${stats.rows[0].masculino}`);
-    console.log(`   Femenino: ${stats.rows[0].femenino}`);
+    console.log(`   Total de pacientes: ${stats.rows[0].total}`);
+    console.log(`   Masculino: ${stats.rows[0].masculino}`);
+    console.log(`   Femenino: ${stats.rows[0].femenino}`);
 
   } catch (error) {
     await client.query('ROLLBACK');
@@ -147,8 +153,9 @@ async function crearPacientes() {
   }
 }
 
-// Ejecutar si se llama directamente
-if (require.main === module) {
+// Ejecutar si se llama directamente (Adaptación para ESM)
+// Si el script se ejecuta como archivo principal (node script.js)
+if (process.argv[1] === __filename) {
   crearPacientes()
     .then(() => {
       console.log('\n🎉 Proceso completado!');
@@ -160,4 +167,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = crearPacientes;
+export default crearPacientes; // ⬅️ CAMBIADO: module.exports a export default
