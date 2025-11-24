@@ -2,7 +2,11 @@
 import Tesseract from 'tesseract.js';
 import sharp from 'sharp';
 import path from 'path';
-import * as fs from 'fs'; // Usamos import * as fs para usar fs.existsSync, fs.unlinkSync, etc.
+import fs from 'fs';
+// CORRECCIÓN: Importar y definir __dirname para ESM
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename); // Usamos import * as fs para usar fs.existsSync, fs.unlinkSync, etc.
 
 // 2. Importaciones de modelos locales (Convertidas a ESM y añadido .js)
 import Formulario from '../models/Formulario.js';

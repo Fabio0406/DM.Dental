@@ -5,7 +5,11 @@ import ProyeccionDental from '../models/ProyeccionDental.js';
 
 // Importaciones de módulos nativos de Node.js
 import path from 'path';
-import { promises as fs } from 'fs'; // Usamos desestructuración para el objeto promises de fs
+import fs from 'fs';
+// CORRECCIÓN: Importar y definir __dirname para ESM
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);// Usamos desestructuración para el objeto promises de fs
 
 /**
  * Controlador de Gestión de Pacientes
