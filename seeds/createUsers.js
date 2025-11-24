@@ -1,5 +1,5 @@
-const { pool } = require('../config/database');
-const bcrypt = require('bcryptjs');
+import { pool } from '../config/database.js'; // ⬅️ CAMBIADO: require() a import
+import bcrypt from 'bcryptjs';               // ⬅️ CAMBIADO: require() a import
 
 const users = [
   {
@@ -27,31 +27,30 @@ const users = [
 const createUsers = async () => {
   try {
     console.log('🌱 Creando usuarios de prueba...');
-    
+
     for (const user of users) {
       // Verificar si el usuario ya existe
       const existingUser = await pool.query(
         'SELECT username FROM usuarios WHERE ci = $1',
         [user.ci]
       );
-      
+
       if (existingUser.rows.length === 0) {
         // Hashear contraseña
         const hashedPassword = await bcrypt.hash(user.password, 10);
-        
+
         // Crear usuario
         await pool.query(
-          `INSERT INTO usuarios (ci, username, password_hash, email, nombres, apellidos, telefono, numero_licencia) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          `INSERT INTO usuarios (ci, username, password_hash, email, nombres, apellidos, telefono, numero_licencia) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [user.ci, user.username, hashedPassword, user.email, user.nombres, user.apellidos, user.telefono, user.numero_licencia]
         );
-        
+
         console.log(`✅ Usuario creado: ${user.username} (CI: ${user.ci})`);
       } else {
-        console.log(`ℹ️  Usuario ya existe: ${user.username} (CI: ${user.ci})`);
+        console.log(`ℹ️  Usuario ya existe: ${user.username} (CI: ${user.ci})`);
       }
     }
-    
+
     console.log('🎉 Proceso completado');
     process.exit(0);
   } catch (error) {
@@ -60,4 +59,6 @@ const createUsers = async () => {
   }
 };
 
-createUsers();
+createUsers(); // Llamada directa en ESM
+
+export default createUsers; // Exportar por si se usa en otro script
