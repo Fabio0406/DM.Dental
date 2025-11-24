@@ -1,5 +1,4 @@
-<%
-const body = `
+<% const body = `
 <div class="container-fluid mt-5">
     <div class="row justify-content-center">
         <div class="col-lg-10 col-xl-8">
@@ -16,15 +15,15 @@ const body = `
             </div>
 
             <!-- Errores -->
-            ${errores && errores.length > 0 ? `
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <strong><i class="bi bi-exclamation-triangle-fill"></i> Errores en el formulario:</strong>
-                    <ul class="mb-0 mt-2">
-                        ${errores.map(error => `<li>${error}</li>`).join('')}
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            ` : ''}
+            ${ errores && errores.length > 0 ? 
+                '<div class="alert alert-danger alert-dismissible fade show">' +
+                    '<strong><i class="bi bi-exclamation-triangle-fill"></i> Errores en el formulario:</strong>' +
+                    '<ul class="mb-0 mt-2">' +
+                        errores.map(function(error) { return '<li>' + error + '</li>'; }).join('') +
+                    '</ul>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                '</div>'
+            : '' }
 
             <!-- Formulario en Card -->
             <div class="card border-0 shadow-sm">
@@ -40,15 +39,15 @@ const body = `
                                 <div class="col-md-6">
                                     <label for="ci" class="form-label"><strong>Carnet de Identidad *</strong></label>
                                     <input type="text" id="ci" name="ci" class="form-control" required 
-                                           value="${datos.ci || ''}" placeholder="Ej: 12345678" maxlength="15">
+                                           value="${ datos.ci || '' }" placeholder="Ej: 12345678" maxlength="15">
                                     <div class="form-text">Solo números, sin puntos ni guiones</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="sexo" class="form-label"><strong>Sexo *</strong></label>
                                     <select id="sexo" name="sexo" class="form-select" required>
                                         <option value="">Seleccione...</option>
-                                        <option value="M" ${datos.sexo === 'M' ? 'selected' : ''}>Masculino</option>
-                                        <option value="F" ${datos.sexo === 'F' ? 'selected' : ''}>Femenino</option>
+                                        <option value="M" ${ datos.sexo === 'M' ? 'selected' : '' }>Masculino</option>
+                                        <option value="F" ${ datos.sexo === 'F' ? 'selected' : '' }>Femenino</option>
                                     </select>
                                 </div>
                             </div>
@@ -57,12 +56,12 @@ const body = `
                                 <div class="col-md-6">
                                     <label for="nombres" class="form-label"><strong>Nombres *</strong></label>
                                     <input type="text" id="nombres" name="nombres" class="form-control" required 
-                                           value="${datos.nombres || ''}" placeholder="Ej: Juan Carlos">
+                                           value="${ datos.nombres || '' }" placeholder="Ej: Juan Carlos">
                                 </div>
                                 <div class="col-md-6">
                                     <label for="apellidos" class="form-label"><strong>Apellidos *</strong></label>
                                     <input type="text" id="apellidos" name="apellidos" class="form-control" required 
-                                           value="${datos.apellidos || ''}" placeholder="Ej: Pérez Gómez">
+                                           value="${ datos.apellidos || '' }" placeholder="Ej: Pérez Gómez">
                                 </div>
                             </div>
 
@@ -70,19 +69,19 @@ const body = `
                                 <div class="col-md-6">
                                     <label for="fecha_nacimiento" class="form-label"><strong>Fecha de Nacimiento *</strong></label>
                                     <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" class="form-control" required 
-                                           value="${datos.fecha_nacimiento || ''}" max="${new Date().toISOString().split('T')[0]}">
+                                           value="${ datos.fecha_nacimiento || '' }">
                                 </div>
                                 <div class="col-md-6">
                                     <label for="telefono" class="form-label"><strong>Teléfono</strong></label>
                                     <input type="tel" id="telefono" name="telefono" class="form-control" 
-                                           value="${datos.telefono || ''}" placeholder="Ej: 79012345">
+                                           value="${ datos.telefono || '' }" placeholder="Ej: 79012345">
                                 </div>
                             </div>
 
                             <div class="mt-3">
                                 <label for="direccion" class="form-label"><strong>Dirección</strong></label>
                                 <textarea id="direccion" name="direccion" class="form-control" rows="3" 
-                                          placeholder="Calle, número, barrio, zona...">${datos.direccion || ''}</textarea>
+                                          placeholder="Calle, número, barrio, zona...">${ datos.direccion || '' }</textarea>
                             </div>
                         </div>
 
@@ -104,7 +103,7 @@ const body = `
                                            accept="image/jpeg,image/jpg,image/png,image/webp" onchange="previsualizarImagen(event)">
                                     <div class="form-text">
                                         <i class="bi bi-info-circle"></i> 
-                                        Formatos: JPG, PNG, WebP • Máx. 5MB
+                                        Formatos: JPG, PNG, WebP - Máx. 5MB
                                     </div>
                                 </div>
                             </div>
@@ -177,18 +176,16 @@ const body = `
 
     // Toast reutilizable
     function showToast(message, type) {
-        const toast = `
-            <div class="toast align-items-center text-white bg-${type} border-0 position-fixed top-0 end-0 p-3" style="z-index: 1100;" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body">${message}</div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>`;
-        document.body.insertAdjacentHTML('beforeend', toast);
+        const toastHTML = '<div class="toast align-items-center text-white bg-' + type + ' border-0 position-fixed top-0 end-0 p-3" style="z-index: 1100;" role="alert">' +
+            '<div class="d-flex">' +
+                '<div class="toast-body">' + message + '</div>' +
+                '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>' +
+            '</div>' +
+        '</div>';
+        document.body.insertAdjacentHTML('beforeend', toastHTML);
         new bootstrap.Toast(document.querySelector('.toast')).show();
     }
 </script>
-`;
-%>
+`; %>
 
 <%- include('../layouts/main', { title: title, body: body }) %>
