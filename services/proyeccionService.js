@@ -1,6 +1,10 @@
-import path from 'path';        // ⬅️ CAMBIADO: require() a import
-import { promises as fs } from 'fs'; // ⬅️ CAMBIADO: require() a import con desestructuración
-
+import path from 'path';
+import fs from 'fs';
+// CORRECCIÓN: Importar y definir __dirname para ESM
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// FIN CORRECCIÓN
 // ============================================
 // SERVICIOS ORIGINALES (COMENTADOS TEMPORALMENTE)
 // ============================================

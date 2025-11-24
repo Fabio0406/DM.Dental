@@ -1,6 +1,11 @@
 import sharp from 'sharp'; // ⬅️ CAMBIADO: require() a import
-import path from 'path';   // ⬅️ CAMBIADO: require() a import
-
+import path from 'path';
+import fs from 'fs';
+// CORRECCIÓN: Importar y definir __dirname para ESM
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// FIN CORRECCIÓN
 /**
  * Servicio de Detección Facial - FASE 1
  * Usa análisis de imagen con Sharp para detectar la región de la boca
