@@ -2,7 +2,12 @@ import Solicitud from '../models/Solicitud.js';
 import Insumo from '../models/Insumo.js';
 import puppeteer from 'puppeteer';
 import path from 'path';
-import { promises as fs } from 'fs';
+import fs from 'fs';
+// CORRECCIÓN: Importar y definir __dirname para ESM
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// FIN CORRECCIÓN
 
 class SolicitudController {
   // Mostrar lista de solicitudes del usuario
