@@ -4,7 +4,7 @@ import ImagenPaciente from '../models/ImagenPaciente.js';
 import ProyeccionDental from '../models/ProyeccionDental.js';
 import ProyeccionService from '../services/proyeccionService.js'; // ⬅️ CAMBIADO y añadido .js
 import path from 'path';
-import fs from 'fs';
+import { promises as fs } from 'fs';
 // CORRECCIÓN: Importar y definir __dirname para ESM
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);

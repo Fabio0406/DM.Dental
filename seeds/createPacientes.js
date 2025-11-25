@@ -103,15 +103,13 @@ async function crearPacientes() {
       );
 
       if (existente.rows.length > 0) {
-        console.log(`⚠️  Paciente con CI ${paciente.ci} ya existe, omitiendo...`);
+        console.log(`⚠️ Paciente con CI ${paciente.ci} ya existe, omitiendo...`);
         continue;
       }
 
       // Insertar paciente
       const result = await client.query(
-        `INSERT INTO pacientes (ci, nombres, apellidos, fecha_nacimiento, sexo, telefono, direccion)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING ci, nombres, apellidos`,
+        `INSERT INTO pacientes (ci, nombres, apellidos, fecha_nacimiento, sexo, telefono, direccion) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ci, nombres, apellidos`,
         [
           paciente.ci,
           paciente.nombres,
@@ -132,17 +130,17 @@ async function crearPacientes() {
 
     // Mostrar estadísticas
     const stats = await client.query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE sexo = 'masculino' OR sexo = 'M') as masculino,
-        COUNT(*) FILTER (WHERE sexo = 'femenino' OR sexo = 'F') as femenino
-      FROM pacientes
-    `);
+SELECT 
+COUNT(*) as total,
+COUNT(*) FILTER (WHERE sexo = 'masculino' OR sexo = 'M') as masculino,
+COUNT(*) FILTER (WHERE sexo = 'femenino' OR sexo = 'F') as femenino
+FROM pacientes
+`);
 
     console.log('\n📈 Estadísticas del sistema:');
-    console.log(`   Total de pacientes: ${stats.rows[0].total}`);
-    console.log(`   Masculino: ${stats.rows[0].masculino}`);
-    console.log(`   Femenino: ${stats.rows[0].femenino}`);
+    console.log(` Total de pacientes: ${stats.rows[0].total}`);
+    console.log(` Masculino: ${stats.rows[0].masculino}`);
+    console.log(` Femenino: ${stats.rows[0].femenino}`);
 
   } catch (error) {
     await client.query('ROLLBACK');
