@@ -167,7 +167,7 @@ const body = `
                                             ${mov.salidas > 0 ? mov.salidas : ''}
                                         </td>
                                         <td class="text-end ${mov.ajustes != 0 ? 'bg-warning bg-opacity-10' : ''}">
-                                            ${mov.ajustes != 0 ? (mov.ajustes > 0 ? '+' : '') + mov.ajustes : ''}
+                                            ${mov.ajustes != 0 ? (mov.saldo > 0 ? '+' : '-') + mov.ajustes : ''}
                                         </td>
                                         <td class="text-end">
                                             <strong>${mov.saldo}</strong>

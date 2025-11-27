@@ -264,7 +264,7 @@ function mostrarProtocolo() {
         infoDiv.className = 'text-center';
         infoDiv.innerHTML = `
             <p class="mb-2" style="font-size: 12px; line-height: 1.4;">
-                <strong style="font-size: 13px;">Saldo: ${Math.floor(lote.aplicaciones_total)} aplicaciones</strong><br>
+                <strong style="font-size: 13px;">Saldo: ${Math.floor(lote.aplicaciones_disponibles)} aplicaciones</strong><br>
                 <span class="text-muted">Fecha VTO: ${fechaVenc.toLocaleDateString('es-BO')}</span><br>
                 <span class="text-muted">${item.presentacion || 'N/A'}</span><br>
                 <span class="text-muted">Aplicaciones del lote: ${Math.floor(lote.aplicaciones_disponibles)}</span>
