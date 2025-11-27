@@ -185,7 +185,7 @@ class KardexController {
             <td class="text-center">${formatearFecha(mov.fecha)}</td>
             <td class="text-center">${mov.entradas > 0 ? mov.entradas : ''}</td>
             <td class="text-center">${mov.salidas > 0 ? mov.salidas : ''}</td>
-            <td class="text-center">${mov.ajustes !== 0 ? (mov.ajustes > 0 ? '+' : '') + mov.ajustes : ''}</td>
+            <td class="text-center">${mov.ajustes !== 0 ? (mov.saldo > 0 ? '+' : '-') + mov.ajustes : ''}</td>
             <td class="text-center"><strong>${mov.saldo}</strong></td>
             <td class="text-center">${mov.clave_doc || ''}</td>
             <td class="text-center">${recibidoExpedido}</td>
