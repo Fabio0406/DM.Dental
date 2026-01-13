@@ -176,7 +176,7 @@ class OCRController {
   static listFormularios = async (req, res) => {
     try {
       const formularios = await Formulario.findByUser(req.session.userId, 20);
-
+      console.log('📋 Formularios encontrados:', formularios);
       res.render('ocr/list', {
         title: 'Formularios SALMI - Sistema DM-5',
         formularios

@@ -48,10 +48,10 @@ const body = `
                                     ${formularios.map(formulario => `
                                         <tr>
                                             <td>
-                                                <strong>${new Date(formulario.fecha_procesamiento).toLocaleDateString('es-BO')}</strong>
+                                                <strong>${new Date(formulario.fecha_escaneo).toLocaleDateString('es-BO')}</strong>
                                                 <br>
                                                 <small class="text-muted">
-                                                    ${new Date(formulario.fecha_procesamiento).toLocaleTimeString('es-BO')}
+                                                    ${new Date(formulario.fecha_escaneo).toLocaleTimeString('es-BO')}
                                                 </small>
                                             </td>
                                             <td>
@@ -68,12 +68,12 @@ const body = `
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="badge bg-primary">${formulario.total_items || 0}</span>
+                                                <span class="badge bg-primary">${formulario.total || 0}</span>
                                                 <small class="text-muted">items detectados</small>
                                             </td>
                                             <td>
                                                 <img src="${formulario.imagen_path}" alt="Preview" 
-                                                     class="img-thumbnail" style "max-width: 60px; max-height: 60px;">
+                                                     class="img-thumbnail" style "max-width: 40px; max-height: 40px;">
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
