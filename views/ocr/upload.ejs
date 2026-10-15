@@ -1,70 +1,102 @@
-<% 
+<%
 const body = `
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card">
-                <div class="card-header">
-                    <h4><i class="bi bi-camera"></i> Escanear Formulario SALMI</h4>
-                    <p class="mb-0 text-muted">Sube una imagen del formulario para extraer datos automáticamente</p>
-                </div>
-                <div class="card-body">
-                    ${success ? `<div class="alert alert-success">${success}</div>` : ''}
-                    ${error ? `<div class="alert alert-danger">${error}</div>` : ''}
-                    
-                    <form method="POST" action="/ocr/upload" enctype="multipart/form-data" id="uploadForm">
-                        <div class="mb-4">
-                            <label for="formulario" class="form-label">
-                                <strong>Seleccionar imagen del formulario:</strong>
-                            </label>
-                            <input type="file" class="form-control" id="formulario" name="formulario" 
-                                   accept="image/*" required>                            
-                        </div>
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="scan-line" class="icon-sm"></i> Ingreso de insumos</div>
+        <h1 class="page-title">Escanear formulario SALMI</h1>
+        <p class="page-subtitle">Sube una foto o escaneo del formulario para registrar los insumos recibidos.</p>
+    </div>
+    <div class="page-actions">
+        <a href="/ocr" class="btn btn-light"><i data-lucide="files"></i> Formularios anteriores</a>
+    </div>
+</div>
 
-                        <!-- Preview de imagen -->
-                        <div id="imagePreview" class="mb-3" style="display: none;">
-                            <label class="form-label">Vista previa:</label>
-                            <div class="border rounded p-2">
-                                <img id="previewImg" src="" alt="Vista previa" class="img-fluid" style="max-height: 300px;">
-                            </div>
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <ol class="steps mb-3" aria-label="Pasos">
+            <li class="is-current"><span class="step-num">1</span> Subir imagen</li>
+            <li><span class="step-num">2</span> Leer formulario</li>
+            <li><span class="step-num">3</span> Revisar</li>
+            <li><span class="step-num">4</span> Importar al kardex</li>
+        </ol>
+
+        ${success ? `<div class="alert alert-success mb-3" role="status"><i data-lucide="circle-check"></i><div>${success}</div></div>` : ''}
+        ${error ? `<div class="alert alert-danger mb-3" role="alert"><i data-lucide="circle-alert"></i><div>${error}</div></div>` : ''}
+
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="POST" action="/ocr/upload" enctype="multipart/form-data" id="uploadForm" data-loading="Subiendo…">
+                    <label for="formulario" class="dropzone" id="dropzone">
+                        <span class="dropzone-icon"><i data-lucide="image-up" class="icon-lg"></i></span>
+                        <strong>Arrastra la imagen aquí o haz clic para seleccionarla</strong>
+                        <span class="small">JPG, PNG o WEBP · máximo 10 MB</span>
+                        <input type="file" class="visually-hidden" id="formulario" name="formulario" accept="image/jpeg,image/png,image/webp" required>
+                    </label>
+
+                    <div id="imagePreview" class="mt-3" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small fw-semibold" id="fileName"></span>
+                            <button type="button" class="btn btn-ghost btn-sm" id="clearFile"><i data-lucide="x" class="icon-sm"></i> Quitar</button>
                         </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-                                <i class="bi bi-search"></i> Procesar con IA
-                            </button>
-                            <a href="/ocr" class="btn btn-outline-secondary">
-                                <i class="bi bi-journal-text"></i> Ver formularios anteriores
-                            </a>
-                        </div>
-                    </form>
-                </div>
+                        <img id="previewImg" src="" alt="Vista previa del formulario" class="doc-preview">
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="/dashboard" class="btn btn-light">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                            <i data-lucide="arrow-right"></i> Subir y revisar
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
+
+        <p class="text-muted small mt-3 d-flex gap-2">
+            <i data-lucide="lightbulb" class="icon-sm mt-1"></i>
+            <span>Para un mejor resultado, fotografía el formulario completo, de frente, sin sombras ni reflejos, y que se vean los títulos de las columnas. La lectura se hace en este equipo, sin enviar la imagen a internet.</span>
+        </p>
     </div>
 </div>
 
 <script>
-// Preview de imagen
-document.getElementById('formulario').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
+(function () {
+    const input = document.getElementById('formulario');
+    const zone = document.getElementById('dropzone');
+    const preview = document.getElementById('imagePreview');
+    const submit = document.getElementById('submitBtn');
+    const MAX = 10 * 1024 * 1024;
+
+    function mostrar(file) {
+        if (!file) { limpiar(); return; }
+        if (file.size > MAX) { DM5.toast('La imagen supera los 10 MB', 'warning'); limpiar(); return; }
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = e => {
             document.getElementById('previewImg').src = e.target.result;
-            document.getElementById('imagePreview').style.display = 'block';
+            document.getElementById('fileName').textContent = file.name;
+            preview.style.display = 'block';
+            submit.disabled = false;
         };
         reader.readAsDataURL(file);
-    } else {
-        document.getElementById('imagePreview').style.display = 'none';
     }
-});
 
-// Loading state
-document.getElementById('uploadForm').addEventListener('submit', function() {
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
-    submitBtn.disabled = true;
-});
+    function limpiar() {
+        input.value = '';
+        preview.style.display = 'none';
+        submit.disabled = true;
+    }
+
+    input.addEventListener('change', () => mostrar(input.files[0]));
+    document.getElementById('clearFile').addEventListener('click', limpiar);
+
+    ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('is-dragover'); }));
+    ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('is-dragover'); }));
+    zone.addEventListener('drop', e => {
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            mostrar(input.files[0]);
+        }
+    });
+})();
 </script>
 `;
 %>

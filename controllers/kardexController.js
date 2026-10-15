@@ -1,5 +1,6 @@
 // Importaciones de módulos (convertidas a ESM)
 import Kardex from '../models/Kardex.js';
+import { pool } from '../config/database.js';
 import puppeteer from 'puppeteer';
 import path from 'path';
 import fs from 'fs';
@@ -519,7 +520,6 @@ class KardexController {
       const historial = await Kardex.obtenerHistorialKardex(parseInt(id));
 
       // Obtener información básica del insumo
-      const { pool } = require('../config/database');
       const insumoResult = await pool.query(
         'SELECT codigo, nombre_generico, presentacion FROM insumos WHERE id_insumo = $1',
         [id]

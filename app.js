@@ -17,8 +17,6 @@ import dashboardRoutes from './routes/dashboard.js';
 import ocrRoutes from './routes/ocr.js';
 import consumoRoutes from './routes/consumos.js';
 import kardexRoutes from './routes/kardex.js';
-import pacientesRoutes from './routes/pacientes.js';
-import proyeccionesRoutes from './routes/proyecciones.js';
 import alertasRoutes from './routes/alertas.js';
 import solicitudesRoutes from './routes/solicitudes.js';
 
@@ -33,6 +31,11 @@ const PORT = process.env.PORT || 3000;
 // Configurar motor de plantillas EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Escapar texto dinámico dentro de las plantillas (las vistas arman HTML con template strings)
+app.locals.esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+}[c]));
 
 // Middleware para archivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
@@ -60,9 +63,7 @@ app.use((req, res, next) => {
 
 // Crear directorios necesarios
 const directorios = [
-  path.join(__dirname, 'public/uploads/formularios'),
-  path.join(__dirname, 'public/uploads/pacientes'),
-  path.join(__dirname, 'public/uploads/proyecciones')
+  path.join(__dirname, 'public/uploads/formularios')
 ];
 
 directorios.forEach(dir => {
@@ -79,8 +80,6 @@ app.use('/dashboard', dashboardRoutes);
 app.use('/ocr', ocrRoutes);
 app.use('/consumos', consumoRoutes);
 app.use('/kardex', kardexRoutes);
-app.use('/pacientes', pacientesRoutes);
-app.use('/proyecciones', proyeccionesRoutes);
 app.use('/alertas', alertasRoutes);
 app.use('/solicitudes', solicitudesRoutes);
 
@@ -97,7 +96,7 @@ app.get('/', (req, res) => {
 app.use((req, res) => {
   res.status(404).render('layouts/main', {
     title: 'Página no encontrada',
-    body: '<div class="container mt-5"><h1>404 - Página no encontrada</h1><a href="/" class="btn btn-primary">Volver al inicio</a></div>'
+    body: '<div class="empty-state" style="padding-top: 12vh"><div class="empty-icon"><i data-lucide="map-pin-off"></i></div><p class="page-eyebrow justify-content-center">Error 404</p><h1 class="page-title mb-2">Página no encontrada</h1><p>La dirección no existe o fue movida.</p><a href="/" class="btn btn-primary">Volver al inicio</a></div>'
   });
 });
 
@@ -106,7 +105,7 @@ app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).render('layouts/main', {
     title: 'Error del servidor',
-    body: '<div class="container mt-5"><h1>500 - Error interno del servidor</h1><a href="/" class="btn btn-primary">Volver al inicio</a></div>'
+    body: '<div class="empty-state" style="padding-top: 12vh"><div class="empty-icon" style="background: var(--danger-soft); color: var(--danger)"><i data-lucide="server-crash"></i></div><p class="page-eyebrow justify-content-center">Error 500</p><h1 class="page-title mb-2">Algo salió mal</h1><p>Ocurrió un error inesperado. Intenta de nuevo en unos momentos.</p><a href="/" class="btn btn-primary">Volver al inicio</a></div>'
   });
 });
 

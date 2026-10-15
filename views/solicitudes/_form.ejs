@@ -1,0 +1,77 @@
+<%# Formulario compartido de solicitud. Recibe: action, insumos, items, submitLabel %>
+<form id="formSolicitud" method="POST" action="<%= action %>">
+    <div class="card mb-3">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title"><i data-lucide="package-plus"></i> Agregar insumos</h2>
+                <p class="card-subtitle">Si eliges un insumo que ya está en la lista, se suma la cantidad.</p>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-7">
+                    <label for="selectInsumo" class="form-label">Insumo</label>
+                    <select class="form-select" id="selectInsumo">
+                        <option value="">Selecciona un insumo…</option>
+                        <% insumos.forEach(ins => { %>
+                            <option value="<%= ins.id_insumo %>"
+                                    data-codigo="<%= ins.codigo %>"
+                                    data-nombre="<%= ins.nombre_generico %>"
+                                    data-presentacion="<%= ins.presentacion || 'Unidad' %>"
+                                    data-precio="<%= ins.costo_unitario || 0 %>">
+                                <%= ins.codigo %> · <%= ins.nombre_generico %> — Bs <%= parseFloat(ins.costo_unitario || 0).toFixed(2) %>
+                            </option>
+                        <% }) %>
+                    </select>
+                    <div class="invalid-feedback">Selecciona un insumo.</div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="inputCantidad" class="form-label">Cantidad</label>
+                    <input type="number" class="form-control" id="inputCantidad" min="1" value="1" inputmode="numeric">
+                    <div class="invalid-feedback">Mínimo 1.</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <button type="button" class="btn btn-primary w-100" id="btnAgregar">
+                        <i data-lucide="plus"></i> Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card table-card">
+        <div class="card-header">
+            <h2 class="card-title"><i data-lucide="list"></i> Ítems de la solicitud</h2>
+            <span class="badge badge-soft-neutral" id="totalItems">0 ítems</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle" id="tablaItems">
+                <thead>
+                    <tr>
+                        <th style="width: 48px">#</th>
+                        <th>Insumo</th>
+                        <th>Unidad</th>
+                        <th class="text-end">Cantidad</th>
+                        <th class="text-end">P. unitario</th>
+                        <th class="text-end">P. total</th>
+                        <th><span class="visually-hidden">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyItems"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <div class="action-summary">Total general: <strong id="totalGeneral">Bs 0,00</strong></div>
+        <div class="d-flex gap-2">
+            <a href="/solicitudes" class="btn btn-light">Cancelar</a>
+            <button type="submit" class="btn btn-primary" id="btnGuardar" disabled>
+                <i data-lucide="save"></i> <%= submitLabel %>
+            </button>
+        </div>
+    </div>
+</form>
+
+<script type="application/json" id="solicitud-items"><%- JSON.stringify(items || []).replace(/</g, '\\u003c') %></script>
+<script src="/js/solicitud-form.js"></script>

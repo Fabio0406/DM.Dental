@@ -1,172 +1,105 @@
-<% 
+<%
+const s = stats || {};
+const totalApl = parseInt(s.total_aplicaciones_consumidas) || 0;
+const valorTotal = parseFloat(s.valor_total_consumido) || 0;
+const recibos = parseInt(s.total_servicios) || 0;
+const insumosDistintos = parseInt(s.insumos_diferentes_usados) || 0;
+const maxApl = porInsumo.length ? Math.max(...porInsumo.map(r => parseInt(r.aplicaciones) || 0)) : 0;
+const etiquetaPeriodo = { 7: '7 días', 30: '30 días', 90: '90 días', 365: '1 año' };
+
 const body = `
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3><i class="bi bi-bar-chart-line"></i> Estadísticas de Consumo</h3>
-                <div class="d-flex gap-2">
-                    <a href="/consumos/registro" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Nuevo Registro</a>
-                    <a href="/consumos/historial" class="btn btn-outline-secondary"><i class="bi bi-journal-text"></i> Historial</a>
-                </div>
-            </div>
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="chart-column" class="icon-sm"></i> <a href="/consumos/historial">Historial de consumos</a></div>
+        <h1 class="page-title">Estadísticas de consumo</h1>
+        <p class="page-subtitle">${periodo ? 'Período analizado: ' + periodo : 'Resumen de tus consumos registrados.'}</p>
+    </div>
+    <div class="page-actions">
+        <div class="btn-group" role="group" aria-label="Período">
+            ${periodos.map(p => `<a href="/consumos/estadisticas?dias=${p}" class="btn ${p === dias ? 'btn-primary' : 'btn-light'}" ${p === dias ? 'aria-current="true"' : ''}>${etiquetaPeriodo[p]}</a>`).join('')}
         </div>
     </div>
+</div>
 
-    <!-- Período -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="alert alert-info">
-                <h6><i class="bi bi-calendar-range"></i> Período analizado</h6>
-                <p class="mb-0">${periodo}</p>
-            </div>
+${locals.error ? `<div class="alert alert-danger mb-3" role="alert"><i data-lucide="circle-alert"></i><div>${error}</div></div>` : ''}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card tone-info">
+            <span class="stat-icon"><i data-lucide="receipt"></i></span>
+            <div><p class="stat-label">Recibos atendidos</p><p class="stat-value">${recibos}</p></div>
         </div>
     </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card tone-success">
+            <span class="stat-icon"><i data-lucide="activity"></i></span>
+            <div><p class="stat-label">Aplicaciones consumidas</p><p class="stat-value">${totalApl}</p></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card tone-neutral">
+            <span class="stat-icon"><i data-lucide="boxes"></i></span>
+            <div><p class="stat-label">Insumos distintos</p><p class="stat-value">${insumosDistintos}</p></div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card tone-warning">
+            <span class="stat-icon"><i data-lucide="wallet"></i></span>
+            <div><p class="stat-label">Valor consumido</p><p class="stat-value">Bs ${valorTotal.toFixed(2)}</p></div>
+        </div>
+    </div>
+</div>
 
-    ${locals.error ? `
-        <div class="alert alert-danger">${error}</div>
-    ` : ''}
-
-    ${stats.length === 0 ? `
-        <div class="row">
-            <div class="col-12">
-                <div class="text-center py-5">
-                    <h4 class="text-muted"><i class="bi bi-bar-chart-line"></i> No hay datos estadísticos</h4>
-                    <p class="text-muted">No se registraron consumos en el período seleccionado</p>
-                    <a href="/consumos/registro" class="btn btn-primary btn-lg">
-                        <i class="bi bi-pencil-square"></i> Registrar consumos
-                    </a>
-                </div>
-            </div>
+<div class="card table-card">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title"><i data-lucide="list-ordered"></i> Consumo por insumo</h2>
+            <p class="card-subtitle">Ordenado de mayor a menor número de aplicaciones</p>
+        </div>
+    </div>
+    ${porInsumo.length === 0 ? `
+        <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="chart-no-axes-column"></i></div>
+            <h3>Sin consumos en este período</h3>
+            <p>Prueba con un período más amplio o registra un consumo.</p>
+            <a href="/consumos/registro" class="btn btn-primary"><i data-lucide="plus"></i> Registrar consumo</a>
         </div>
     ` : `
-        <!-- Resumen general -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card text-white bg-primary">
-                    <div class="card-body">
-                        <h5><i class="bi bi-journal"></i> Total Procedimientos</h5>
-                        <h3>${stats.reduce((sum, stat) => sum + parseInt(stat.total_procedimientos), 0)}</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-success">
-                    <div class="card-body">
-                        <h5><i class="bi bi-box-seam"></i> Total Insumos</h5>
-                        <h3>${stats.reduce((sum, stat) => sum + parseInt(stat.total_insumos_usados), 0)}</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-info">
-                    <div class="card-body">
-                        <h5><i class="bi bi-diagram-3"></i> Tipos de Servicio</h5>
-                        <h3>${stats.length}</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-warning">
-                    <div class="card-body">
-                        <h5><i class="bi bi-graph-up-arrow"></i> Promedio por Proc.</h5>
-                        <h3>${Math.round(stats.reduce((sum, stat) => sum + parseInt(stat.total_insumos_usados), 0) / stats.reduce((sum, stat) => sum + parseInt(stat.total_procedimientos), 0) * 100) / 100}</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Estadísticas por servicio -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h6><i class="bi bi-bar-chart-line"></i> Consumo por Tipo de Servicio</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Tipo de Servicio</th>
-                                        <th>Procedimientos</th>
-                                        <th>Insumos Usados</th>
-                                        <th>Promedio por Proc.</th>
-                                        <th>% del Total</th>
-                                        <th>Gráfico</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${stats.map(stat => {
-                                        const totalGeneral = stats.reduce((sum, s) => sum + parseInt(s.total_insumos_usados), 0);
-                                        const porcentaje = Math.round((parseInt(stat.total_insumos_usados) / totalGeneral) * 100);
-                                        const promedio = Math.round((parseInt(stat.total_insumos_usados) / parseInt(stat.total_procedimientos)) * 100) / 100;
-                                        
-                                        const progressWidth = porcentaje + '%';
-                                        return '<tr>' +
-                                            '<td>' +
-                                                '<strong>' + (stat.tipo_servicio || 'Sin clasificar') + '</strong>' +
-                                            '</td>' +
-                                            '<td>' +
-                                                '<span class="badge bg-primary">' + stat.total_procedimientos + '</span>' +
-                                            '</td>' +
-                                            '<td>' +
-                                                '<span class="badge bg-success">' + stat.total_insumos_usados + '</span>' +
-                                            '</td>' +
-                                            '<td>' +
-                                                '<span class="text-info">' + promedio + '</span>' +
-                                            '</td>' +
-                                            '<td>' +
-                                                '<span class="badge bg-warning">' + porcentaje + '%</span>' +
-                                            '</td>' +
-                                            '<td>' +
-                                                '<div class="progress" style="height: 20px; width: 100px;">' +
-                                                    '<div class="progress-bar" role="progressbar" style="width: ' + progressWidth + ';" aria-valuenow="' + porcentaje + '" aria-valuemin="0" aria-valuemax="100">' +
-                                                    '</div>' +
-                                                '</div>' +
-                                            '</td>' +
-                                        '</tr>';
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Gráfico simple con CSS -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h6><i class="bi bi-graph-up-arrow"></i> Distribución Visual</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            ${stats.map(stat => {
-                                const totalGeneral = stats.reduce((sum, s) => sum + parseInt(s.total_insumos_usados), 0);
-                                const altura = Math.max(10, (parseInt(stat.total_insumos_usados) / totalGeneral) * 200);
-                                const colores = ['bg-primary', 'bg-success', 'bg-warning', 'bg-info', 'bg-secondary'];
-                                const color = colores[stats.indexOf(stat) % colores.length];
-                                const colWidth = Math.max(2, Math.floor(12 / stats.length));
-                                
-                                const alturaPixels = altura + 'px';
-                                
-                                return '<div class="col-md-' + colWidth + ' text-center">' +
-                                    '<div class="mb-2">' +
-                                        '<div class="d-flex justify-content-center align-items-end" style="height: 220px;">' +
-                                            '<div class="' + color + '" style="width: 60px; height: ' + alturaPixels + '; border-radius: 4px 4px 0 0;"></div>' +
-                                        '</div>' +
-                                    '</div>' +
-                                    '<small><strong>' + stat.total_insumos_usados + '</strong></small><br>' +
-                                    '<small class="text-muted">' + (stat.tipo_servicio || 'Sin clasificar') + '</small>' +
-                                '</div>';
-                            }).join('')}
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Insumo</th>
+                        <th style="width: 34%">Participación</th>
+                        <th class="text-end">Aplicaciones</th>
+                        <th class="text-end">Recibos</th>
+                        <th class="text-end">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${porInsumo.map(r => {
+                        const apl = parseInt(r.aplicaciones) || 0;
+                        const pct = totalApl ? Math.round(apl / totalApl * 100) : 0;
+                        const ancho = maxApl ? Math.round(apl / maxApl * 100) : 0;
+                        return `
+                        <tr>
+                            <td>
+                                <span class="cell-main">${esc(r.nombre_generico)}</span>
+                                <span class="cell-sub"><code>${esc(r.codigo)}</code></span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="meter flex-grow-1"><span style="width: ${ancho}%"></span></div>
+                                    <span class="small text-muted num" style="min-width: 36px">${pct}%</span>
+                                </div>
+                            </td>
+                            <td class="text-end num fw-semibold">${apl}</td>
+                            <td class="text-end num">${r.recibos}</td>
+                            <td class="text-end num">Bs ${parseFloat(r.valor || 0).toFixed(2)}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
         </div>
     `}
 </div>

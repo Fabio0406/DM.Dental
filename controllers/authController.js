@@ -4,12 +4,15 @@ class AuthController {
   // Mostrar formulario de login
   static showLogin = (req, res) => {
     const error = req.session.error || null;
-    req.session.error = null; // Limpiar error después de mostrarlo
-    
-    res.render('auth/login', { 
-      title: 'Iniciar Sesión - Sistema DM-5',
-      error
-    });
+    const success = req.session.success || null;
+    req.session.error = null; // Limpiar mensajes después de mostrarlos
+    req.session.success = null;
+
+    res.render('auth/login', {
+      title: 'Iniciar Sesión - Sistema DM-5',
+      error,
+      success
+    });
   };
 
   // Mostrar formulario de registro

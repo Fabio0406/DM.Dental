@@ -1,0 +1,65 @@
+<%
+const formatearFecha = (fecha) => fecha ? new Date(fecha).toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+const formatearMoneda = (valor) => 'Bs ' + (parseFloat(valor) || 0).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const body = `
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="book-open" class="icon-sm"></i> <a href="/kardex">Kardex</a> <i data-lucide="chevron-right" class="icon-sm"></i> ${esc(insumo.codigo)}</div>
+        <h1 class="page-title">Gestiones anteriores</h1>
+        <p class="page-subtitle">${esc(insumo.nombre_generico)}${insumo.presentacion ? ' · ' + esc(insumo.presentacion) : ''}</p>
+    </div>
+    <div class="page-actions">
+        <a href="/kardex" class="btn btn-light"><i data-lucide="arrow-left"></i> Volver al kardex</a>
+    </div>
+</div>
+
+<div class="card table-card">
+    <div class="card-header">
+        <h2 class="card-title"><i data-lucide="archive"></i> Kardex cerrados</h2>
+        <span class="badge badge-soft-neutral">${historial.length} ${historial.length === 1 ? 'gestión' : 'gestiones'}</span>
+    </div>
+    ${historial.length === 0 ? `
+        <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="archive"></i></div>
+            <h3>Sin gestiones cerradas</h3>
+            <p>Este insumo todavía no tiene kardex de gestiones anteriores. El kardex actual sigue abierto.</p>
+            <a href="/kardex" class="btn btn-primary"><i data-lucide="book-open"></i> Ir al kardex</a>
+        </div>
+    ` : `
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Gestión</th>
+                        <th>N° kardex</th>
+                        <th>Ubicación</th>
+                        <th>Apertura</th>
+                        <th>Cierre</th>
+                        <th class="text-end">Movimientos</th>
+                        <th class="text-end">Saldo final</th>
+                        <th class="text-end">Valor final</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${historial.map(k => `
+                        <tr>
+                            <td class="cell-main">${k.gestion}</td>
+                            <td>${esc(k.numero_kardex)}</td>
+                            <td>${esc(k.ubicacion || '—')}</td>
+                            <td class="num">${formatearFecha(k.fecha_apertura)}</td>
+                            <td class="num">${formatearFecha(k.fecha_cierre)}</td>
+                            <td class="text-end num">${k.total_movimientos}</td>
+                            <td class="text-end num fw-semibold">${k.saldo_final ?? 0}</td>
+                            <td class="text-end num">${formatearMoneda(k.valor_final)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `}
+</div>
+`;
+%>
+
+<%- include('../layouts/main', { title: title, body: body }) %>

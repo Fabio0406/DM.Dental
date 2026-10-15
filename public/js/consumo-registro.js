@@ -1,41 +1,59 @@
-// Variables globales
+// Registro de consumo de insumos por protocolo (FIFO por lote)
 let protocoloActual = [];
-let insumosConsumo = new Map();
+const insumosConsumo = new Map();
 let lotesVencidosPendientes = [];
 
-// Event listeners
+const esc = (v) => DM5.escape(v);
+
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('id_tipo_servicio').addEventListener('change', function () {
-        const idTipoServicio = this.value;
-        if (idTipoServicio) {
-            cargarProtocolo(idTipoServicio);
-            verificarDisponibilidad(idTipoServicio);
+        if (this.value) {
+            cargarProtocolo(this.value);
+            verificarDisponibilidad(this.value);
         } else {
             mostrarMensajeInicial();
         }
     });
 
+    // Enter dentro del modal de recibo confirma
+    document.getElementById('numero_recibo_input').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); confirmarConsumo(); }
+    });
+    document.getElementById('reciboModal').addEventListener('shown.bs.modal', () => {
+        document.getElementById('numero_recibo_input').focus();
+    });
+
+    if (Array.isArray(window.LOTES_AGOTADOS) && window.LOTES_AGOTADOS.length > 0) {
+        mostrarModalSobrantes(window.LOTES_AGOTADOS);
+    }
+
     updateSubmitButton();
 });
 
-// Cargar protocolo
+function setMensaje(html) {
+    const box = document.getElementById('protocolo_mensaje');
+    box.innerHTML = html;
+    box.style.display = 'block';
+    document.getElementById('protocolo_container').style.display = 'none';
+    DM5.icons();
+}
+
+function emptyState(icono, titulo, texto, tono) {
+    return '<div class="empty-state">' +
+        '<div class="empty-icon"' + (tono ? ' style="background: var(--' + tono + '-soft); color: var(--' + tono + ')"' : '') + '><i data-lucide="' + icono + '"></i></div>' +
+        '<h3>' + titulo + '</h3>' + (texto ? '<p>' + texto + '</p>' : '') +
+    '</div>';
+}
+
+// ---------- Protocolo ----------
 async function cargarProtocolo(idTipoServicio) {
+    setMensaje('<div class="text-center py-5"><div class="spinner-border" role="status"></div><p class="text-muted mt-3 mb-0">Cargando protocolo…</p></div>');
     try {
-        console.log('Cargando protocolo para servicio:', idTipoServicio);
-
-        document.getElementById('protocolo_mensaje').innerHTML = '<div class="text-center"><div class="spinner-border text-primary"></div><p class="mt-2">Cargando protocolo...</p></div>';
-
         const response = await fetch('/consumos/api/protocolo/' + idTipoServicio);
-        console.log('Response status:', response.status);
-
         const data = await response.json();
-        console.log('Datos recibidos:', data);
 
         if (data.success && data.protocolo.length > 0) {
-            console.log('Protocolo válido con', data.protocolo.length, 'items');
             protocoloActual = data.protocolo;
-            
-            // NUEVO: Manejar lotes vencidos si existen
             if (data.lotes_vencidos && data.lotes_vencidos.length > 0) {
                 lotesVencidosPendientes = data.lotes_vencidos;
                 mostrarAlertaLotesVencidos(data.lotes_vencidos);
@@ -43,277 +61,119 @@ async function cargarProtocolo(idTipoServicio) {
                 lotesVencidosPendientes = [];
                 ocultarAlertaLotesVencidos();
             }
-            
             mostrarProtocolo();
         } else {
-            console.warn('Protocolo vacío');
-            document.getElementById('protocolo_mensaje').innerHTML = '<div class="text-center text-warning py-4"><h5>No hay protocolo definido para este servicio</h5><p>Contacte al administrador para configurar los insumos.</p></div>';
+            protocoloActual = [];
+            insumosConsumo.clear();
+            updateTotalAplicaciones();
+            updateSubmitButton();
+            setMensaje(emptyState('clipboard-x', 'Este servicio no tiene protocolo', 'Configura los insumos del servicio para poder registrar su consumo.', 'warning'));
         }
     } catch (error) {
         console.error('Error:', error);
-        document.getElementById('protocolo_mensaje').innerHTML = '<div class="text-center text-danger py-4"><h5>Error cargando protocolo</h5></div>';
+        setMensaje(emptyState('wifi-off', 'No se pudo cargar el protocolo', 'Revisa tu conexión e inténtalo de nuevo.', 'danger'));
     }
 }
 
-// NUEVO: Mostrar alerta de lotes vencidos
-function mostrarAlertaLotesVencidos(lotes) {
-    const alertContainer = document.getElementById('alerta_lotes_vencidos');
-    if (!alertContainer) {
-        // Crear contenedor si no existe
-        const nuevoAlert = document.createElement('div');
-        nuevoAlert.id = 'alerta_lotes_vencidos';
-        nuevoAlert.className = 'alert alert-danger alert-dismissible fade show mb-4';
-        nuevoAlert.role = 'alert';
-        
-        // Agrupar lotes por insumo
-        const lotesporInsumo = {};
-        lotes.forEach(lote => {
-            if (!lotesporInsumo[lote.id_insumo]) {
-                lotesporInsumo[lote.id_insumo] = {
-                    nombre: lote.nombre_generico,
-                    lotes: []
-                };
-            }
-            lotesporInsumo[lote.id_insumo].lotes.push(lote);
-        });
-        
-        let listaLotes = '<ul class="mb-2">';
-        Object.values(lotesporInsumo).forEach(insumo => {
-            listaLotes += `<li><strong>${insumo.nombre}</strong>: ${insumo.lotes.length} lote(s) vencido(s)</li>`;
-        });
-        listaLotes += '</ul>';
-        
-        nuevoAlert.innerHTML = `
-            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Lotes Vencidos Detectados</h5>
-            <p><strong>Los siguientes lotes han vencido y no pueden ser utilizados:</strong></p>
-            ${listaLotes}
-            <hr>
-            <p class="mb-0">Estos lotes han sido excluidos automáticamente del consumo.</p>
-            <button type="button" class="btn btn-sm btn-outline-dark mt-2" onclick="descartarAlertaVencidos()">
-                <i class="bi bi-check-circle"></i> Entendido, no volver a mostrar
-            </button>
-        `;
-        
-        // Insertar antes del protocolo
-        const protocoloSection = document.getElementById('protocolo_mensaje').parentElement;
-        protocoloSection.parentElement.insertBefore(nuevoAlert, protocoloSection);
-    }
-}
-
-// NUEVO: Ocultar alerta de lotes vencidos
-function ocultarAlertaLotesVencidos() {
-    const alertContainer = document.getElementById('alerta_lotes_vencidos');
-    if (alertContainer) {
-        alertContainer.remove();
-    }
-}
-
-// NUEVO: Descartar alerta y marcar lotes como notificados
-async function descartarAlertaVencidos() {
-    try {
-        if (lotesVencidosPendientes.length === 0) {
-            ocultarAlertaLotesVencidos();
-            return;
-        }
-        
-        const lotesIds = lotesVencidosPendientes.map(l => l.id_lote);
-        
-        const response = await fetch('/consumos/api/lotes-vencidos/notificar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lotes_ids: lotesIds })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            ocultarAlertaLotesVencidos();
-            lotesVencidosPendientes = [];
-            console.log('Lotes marcados como notificados');
-        } else {
-            console.error('Error marcando lotes:', data.error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-// Mostrar protocolo como cards
 function mostrarProtocolo() {
     const grid = document.getElementById('protocolo_grid');
     grid.innerHTML = '';
     insumosConsumo.clear();
-    
+
     protocoloActual.forEach(item => {
         const col = document.createElement('div');
-        col.className = 'col-sm-6 col-md-4 col-lg-3 col-xl-2';
-        
-        // Verificar si hay lote actual
+        col.className = 'col-md-6 col-xl-4 col-xxl-3';
+        const imagen = esc(item.imagen_url || '/images/insumos/default.png');
+
         if (!item.lote_actual) {
-            col.innerHTML = `
-                <div class="card h-100" style="border: 2px solid #dc3545; border-radius: 15px;">
-                    <div class="card-body text-center p-3">
-                        <h6>${item.nombre}</h6>
-                        <div class="alert alert-danger">SIN STOCK</div>
-                    </div>
-                </div>
-            `;
+            col.innerHTML =
+                '<div class="supply-card is-empty">' +
+                    '<div class="supply-head">' +
+                        '<img class="supply-thumb" src="' + imagen + '" alt="" onerror="this.src=\'/images/insumos/default.png\'">' +
+                        '<div><p class="supply-name">' + esc(item.nombre) + '</p><span class="supply-meta">' + esc(item.codigo || '') + '</span></div>' +
+                    '</div>' +
+                    '<span class="badge badge-soft-danger align-self-start"><i data-lucide="package-x"></i> Sin stock vigente</span>' +
+                    '<p class="supply-meta mt-2 mb-0">No hay lotes con stock y sin vencer para este insumo.</p>' +
+                '</div>';
             grid.appendChild(col);
             return;
         }
-        
+
         const lote = item.lote_actual;
-        
-        // Calcular días hasta vencimiento
-        let advertenciaVencimiento = '';
+        const disponibles = Math.floor(lote.aplicaciones_disponibles);
         const fechaVenc = new Date(lote.fecha_vencimiento);
-        const hoy = new Date();
-        const diasDiff = Math.floor((fechaVenc - hoy) / (1000 * 60 * 60 * 24));
-        
-        if (diasDiff <= 30 && diasDiff > 0) {
-            advertenciaVencimiento = `<div class="alert alert-warning p-1 mb-2"><small><i class="bi bi-exclamation-triangle"></i> Vence en ${diasDiff} dias</small></div>`;
-        } else if (diasDiff <= 0) {
-            advertenciaVencimiento = '<div class="alert alert-danger p-1 mb-2"><small><i class="bi bi-x-circle"></i> VENCIDO</small></div>';
-        }
-        
-        const cantidadInicial = Math.floor(lote.aplicaciones_disponibles >= item.cantidad_por_uso ? item.cantidad_por_uso : 0);
+        const dias = Math.floor((fechaVenc - new Date()) / 86400000);
+        const cantidadInicial = disponibles >= item.cantidad_por_uso ? Math.floor(item.cantidad_por_uso) : 0;
         insumosConsumo.set(item.id_insumo, cantidadInicial);
-        
-        const imagenUrl = item.imagen_url || '/images/insumos/default.png';
-        
-        const card = document.createElement('div');
-        card.className = 'card h-100';
-        card.style.cssText = 'border: 2px solid #dee2e6; border-radius: 15px;';
-        
-        const cardBody = document.createElement('div');
-        cardBody.className = 'card-body text-center p-3';
-        
-        // Header con stock unitario y lote
-        const header = document.createElement('div');
-        header.className = 'd-flex justify-content-between align-items-center mb-2';
-        header.innerHTML = `
-            <small class="text-muted"><strong>Stock Unitario:</strong> ${lote.cantidad_fisica || 1}</small>
-            <small class="text-muted"><strong>No.Lote:</strong> ${lote.numero_lote}</small>
-        `;
-        cardBody.appendChild(header);
-        
-        // Advertencia de vencimiento
-        if (advertenciaVencimiento) {
-            const divAdv = document.createElement('div');
-            divAdv.innerHTML = advertenciaVencimiento;
-            cardBody.appendChild(divAdv);
-        }
-        
-        // Imagen
-        const imgDiv = document.createElement('div');
-        imgDiv.className = 'mb-2';
-        const img = document.createElement('img');
-        img.src = imagenUrl;
-        img.alt = item.nombre;
-        img.className = 'img-fluid rounded';
-        img.style.maxHeight = '100px';
-        img.onerror = function() { this.src = '/images/insumos/default.png'; };
-        imgDiv.appendChild(img);
-        cardBody.appendChild(imgDiv);
-        
-        // Nombre del insumo
-        const nombreDiv = document.createElement('div');
-        nombreDiv.className = 'mb-2';
-        nombreDiv.innerHTML = `<strong style="font-size: 14px;">${item.nombre}</strong>`;
-        cardBody.appendChild(nombreDiv);
-        
-        // Controles de cantidad
-        const controlesDiv = document.createElement('div');
-        controlesDiv.className = 'd-flex align-items-center justify-content-center mb-3';
-        
-        const btnMenos = document.createElement('button');
-        btnMenos.type = 'button';
-        btnMenos.className = 'btn btn-outline-danger btn-sm';
-        btnMenos.style.cssText = 'width: 35px; height: 35px; border-radius: 50%; font-size: 20px; padding: 0; line-height: 1;';
-        btnMenos.innerHTML = '<i class="bi bi-dash"></i>';
-        btnMenos.onclick = function() { decrementarInsumo(item.id_insumo); };
-        
-        const inputCant = document.createElement('input');
-        inputCant.type = 'number';
-        inputCant.className = 'form-control text-center mx-2';
-        inputCant.setAttribute('data-id', item.id_insumo);
-        inputCant.value = cantidadInicial;
-        inputCant.min = 0;
-        inputCant.max = Math.floor(lote.aplicaciones_disponibles);
-        inputCant.step = 1;
-        inputCant.style.cssText = 'width: 70px; font-size: 22px; font-weight: bold;';
-        inputCant.onchange = function() { 
-            // Forzar número entero
-            this.value = Math.floor(parseInt(this.value) || 0);
-            updateInsumo(item.id_insumo, this.value); 
-        };
-        
-        const btnMas = document.createElement('button');
-        btnMas.type = 'button';
-        btnMas.className = 'btn btn-outline-success btn-sm';
-        btnMas.style.cssText = 'width: 35px; height: 35px; border-radius: 50%; font-size: 20px; padding: 0; line-height: 1;';
-        btnMas.innerHTML = '<i class="bi bi-plus"></i>';
-        btnMas.onclick = function() { incrementarInsumo(item.id_insumo); };
-        
-        controlesDiv.appendChild(btnMenos);
-        controlesDiv.appendChild(inputCant);
-        controlesDiv.appendChild(btnMas);
-        cardBody.appendChild(controlesDiv);
-        
-        // Info del producto
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'text-center';
-        infoDiv.innerHTML = `
-            <p class="mb-2" style="font-size: 12px; line-height: 1.4;">
-                <strong style="font-size: 13px;">Saldo: ${Math.floor(lote.aplicaciones_disponibles)} aplicaciones</strong><br>
-                <span class="text-muted">Fecha VTO: ${fechaVenc.toLocaleDateString('es-BO')}</span><br>
-                <span class="text-muted">${item.presentacion || 'N/A'}</span><br>
-                <span class="text-muted">Aplicaciones del lote: ${Math.floor(lote.aplicaciones_disponibles)}</span>
-            </p>
-        `;
-        
-        if (item.es_obligatorio) {
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-warning mb-2';
-            badge.textContent = 'Obligatorio';
-            infoDiv.appendChild(badge);
-        }
-        
-        // Botón agotado
-        const btnAgotado = document.createElement('button');
-        btnAgotado.type = 'button';
-        btnAgotado.className = 'btn btn-outline-dark btn-sm w-100';
-        btnAgotado.innerHTML = '<i class="bi bi-box-seam"></i> Agotado';
-        btnAgotado.onclick = function() { 
-            mostrarModalAgotado(item.id_insumo, item.nombre, lote.numero_lote, lote.id_lote); 
-        };
-        infoDiv.appendChild(btnAgotado);
-        
-        cardBody.appendChild(infoDiv);
-        card.appendChild(cardBody);
-        col.appendChild(card);
+
+        let aviso = '';
+        if (dias <= 0) aviso = '<span class="badge badge-soft-danger"><i data-lucide="circle-x"></i> Vencido</span>';
+        else if (dias <= 30) aviso = '<span class="badge badge-soft-warning"><i data-lucide="clock"></i> Vence en ' + dias + ' días</span>';
+
+        col.innerHTML =
+            '<div class="supply-card' + (cantidadInicial > 0 ? ' is-active' : '') + '" id="card_' + item.id_insumo + '">' +
+                '<div class="supply-head">' +
+                    '<img class="supply-thumb" src="' + imagen + '" alt="" onerror="this.src=\'/images/insumos/default.png\'">' +
+                    '<div class="min-w-0">' +
+                        '<p class="supply-name">' + esc(item.nombre) + '</p>' +
+                        '<span class="supply-meta">' + esc(item.presentacion || item.codigo || '') + '</span>' +
+                    '</div>' +
+                '</div>' +
+                (aviso ? '<div class="mb-2">' + aviso + '</div>' : '') +
+                '<div class="supply-stats">' +
+                    '<div><span>Disponible</span><strong>' + disponibles + ' apl.</strong></div>' +
+                    '<div><span>Protocolo</span><strong>' + item.cantidad_por_uso + ' apl.</strong></div>' +
+                    '<div><span>Lote</span><strong>' + esc(lote.numero_lote) + '</strong></div>' +
+                    '<div><span>Vence</span><strong>' + fechaVenc.toLocaleDateString('es-BO') + '</strong></div>' +
+                '</div>' +
+                '<div class="supply-foot">' +
+                    '<label class="form-label mb-0" for="cant_' + item.id_insumo + '">Aplicaciones a descontar</label>' +
+                    '<div class="stepper">' +
+                        '<button type="button" onclick="decrementarInsumo(' + item.id_insumo + ')" aria-label="Restar una aplicación"><i data-lucide="minus" class="icon-sm"></i></button>' +
+                        '<input type="number" id="cant_' + item.id_insumo + '" data-id="' + item.id_insumo + '" value="' + cantidadInicial + '" min="0" max="' + disponibles + '" step="1" inputmode="numeric">' +
+                        '<button type="button" onclick="incrementarInsumo(' + item.id_insumo + ')" aria-label="Sumar una aplicación"><i data-lucide="plus" class="icon-sm"></i></button>' +
+                    '</div>' +
+                    '<button type="button" class="btn btn-ghost btn-sm text-danger" data-agotado="' + item.id_insumo + '">' +
+                        '<i data-lucide="package-x" class="icon-sm"></i> Marcar lote agotado' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
         grid.appendChild(col);
+
+        const input = col.querySelector('input[data-id]');
+        input.addEventListener('change', function () {
+            let v = Math.floor(parseInt(this.value) || 0);
+            v = Math.max(0, Math.min(v, disponibles));
+            this.value = v;
+            updateInsumo(item.id_insumo, v);
+        });
+        col.querySelector('[data-agotado]').addEventListener('click', function () {
+            mostrarModalAgotado(item.nombre, lote.numero_lote, lote.id_lote);
+        });
     });
-    
+
     document.getElementById('protocolo_mensaje').style.display = 'none';
     document.getElementById('protocolo_container').style.display = 'block';
+    DM5.icons();
     updateTotalAplicaciones();
     updateSubmitButton();
 }
 
-// Asegurar números enteros en las funciones
 function incrementarInsumo(id) {
-    const input = document.querySelector(`input[data-id="${id}"]`);
-    const max = Math.floor(parseInt(input.getAttribute('max')));
-    const current = Math.floor(parseInt(input.value) || 0);
+    const input = document.querySelector('input[data-id="' + id + '"]');
+    const max = parseInt(input.max);
+    const current = parseInt(input.value) || 0;
     if (current < max) {
         input.value = current + 1;
         updateInsumo(id, input.value);
+    } else {
+        DM5.toast('No hay más aplicaciones disponibles en este lote', 'warning');
     }
 }
 
 function decrementarInsumo(id) {
-    const input = document.querySelector(`input[data-id="${id}"]`);
-    const current = Math.floor(parseInt(input.value) || 0);
+    const input = document.querySelector('input[data-id="' + id + '"]');
+    const current = parseInt(input.value) || 0;
     if (current > 0) {
         input.value = current - 1;
         updateInsumo(id, input.value);
@@ -323,99 +183,167 @@ function decrementarInsumo(id) {
 function updateInsumo(id, cantidad) {
     cantidad = Math.floor(parseInt(cantidad) || 0);
     insumosConsumo.set(id, cantidad);
+    const card = document.getElementById('card_' + id);
+    if (card) card.classList.toggle('is-active', cantidad > 0);
     updateTotalAplicaciones();
     updateSubmitButton();
 }
 
 function updateTotalAplicaciones() {
-    // Contar cuántos insumos tienen cantidad > 0
-    const insumosSeleccionados = Array.from(insumosConsumo.values()).filter(cant => cant > 0).length;
-    
-    document.getElementById('total_aplicaciones').textContent = `${insumosSeleccionados} insumo${insumosSeleccionados !== 1 ? 's' : ''}`;
+    const n = Array.from(insumosConsumo.values()).filter(c => c > 0).length;
+    document.getElementById('total_aplicaciones').textContent = n + ' insumo' + (n !== 1 ? 's' : '');
 }
 
 function updateSubmitButton() {
     const hasService = document.getElementById('id_tipo_servicio').value;
-    const hasInsumos = Array.from(insumosConsumo.values()).some(cant => cant > 0);
+    const hasInsumos = Array.from(insumosConsumo.values()).some(c => c > 0);
     document.getElementById('btn_guardar').disabled = !(hasService && hasInsumos);
 }
 
+// ---------- Confirmación ----------
 function mostrarModalRecibo() {
-    const tipoServicio = document.getElementById('id_tipo_servicio').selectedOptions[0].text;
-    let resumen = `<strong>Servicio:</strong> ${tipoServicio}<br><strong>Insumos:</strong><ul>`;
-
+    const servicio = document.getElementById('id_tipo_servicio').selectedOptions[0].text;
+    let filas = '';
     insumosConsumo.forEach((cantidad, id) => {
         if (cantidad > 0) {
             const insumo = protocoloActual.find(i => i.id_insumo == id);
-            resumen += `<li>${insumo.nombre}: ${cantidad} aplicaciones</li>`;
+            filas += '<tr><td>' + esc(insumo.nombre) + '</td><td class="text-end num fw-semibold">' + cantidad + '</td></tr>';
         }
     });
-    resumen += '</ul>';
 
-    document.getElementById('resumen_consumo').innerHTML = resumen;
+    document.getElementById('resumen_consumo').innerHTML =
+        '<div class="text-muted small mb-1">Servicio</div>' +
+        '<div class="fw-semibold mb-3">' + esc(servicio) + '</div>' +
+        '<div class="border rounded-3 overflow-hidden border-soft">' +
+            '<table class="table table-sm mb-0"><thead><tr><th>Insumo</th><th class="text-end">Aplicaciones</th></tr></thead><tbody>' + filas + '</tbody></table>' +
+        '</div>';
     new bootstrap.Modal(document.getElementById('reciboModal')).show();
 }
 
 function confirmarConsumo() {
-    const numeroRecibo = document.getElementById('numero_recibo_input').value.trim();
+    const input = document.getElementById('numero_recibo_input');
+    const numeroRecibo = input.value.trim();
     if (!numeroRecibo) {
-        alert('Debe ingresar el número de recibo');
+        input.classList.add('is-invalid');
+        input.focus();
         return;
     }
+    input.classList.remove('is-invalid');
 
     const insumosArray = [];
     insumosConsumo.forEach((cantidad, id) => {
-        if (cantidad > 0) {
-            insumosArray.push({ id_insumo: parseInt(id), cantidad: parseInt(cantidad) });
-        }
+        if (cantidad > 0) insumosArray.push({ id_insumo: parseInt(id), cantidad: parseInt(cantidad) });
     });
+
+    const btn = document.getElementById('btnConfirmarConsumo');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Registrando…';
 
     document.getElementById('hidden_insumos').value = JSON.stringify(insumosArray);
     document.getElementById('hidden_numero_recibo').value = numeroRecibo;
     document.getElementById('consumoForm').submit();
 }
 
-function mostrarModalAgotado(idInsumo, nombre, lote, idLote) {
+// ---------- Lote agotado ----------
+function mostrarModalAgotado(nombre, lote, idLote) {
     document.getElementById('agotado_insumo_nombre').textContent = nombre;
     document.getElementById('agotado_lote_numero').textContent = lote;
     document.getElementById('agotado_lote_id').value = idLote;
+    document.getElementById('motivo_agotado').value = '';
     new bootstrap.Modal(document.getElementById('agotadoModal')).show();
 }
 
 async function confirmarAgotado() {
     const idLote = document.getElementById('agotado_lote_id').value;
     const motivo = document.getElementById('motivo_agotado').value || 'Agotado manualmente';
-
     try {
         const response = await fetch('/consumos/api/ajuste', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_lote: parseInt(idLote), aplicaciones_sobrantes: 0, motivo: motivo })
+            body: JSON.stringify({ id_lote: parseInt(idLote), aplicaciones_sobrantes: 0, motivo })
         });
-
         const data = await response.json();
         if (data.success) {
-            alert('Lote marcado como agotado');
-            location.reload();
+            bootstrap.Modal.getInstance(document.getElementById('agotadoModal')).hide();
+            DM5.toast('Lote marcado como agotado');
+            const servicio = document.getElementById('id_tipo_servicio').value;
+            if (servicio) cargarProtocolo(servicio);
+        } else {
+            DM5.toast(data.error || 'No se pudo registrar el ajuste', 'danger');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al registrar el ajuste');
+        DM5.toast('Error al registrar el ajuste', 'danger');
     }
 }
 
+// ---------- Disponibilidad y lotes vencidos ----------
 async function verificarDisponibilidad(idTipoServicio) {
+    const alertDiv = document.getElementById('disponibilidad_alert');
     try {
         const response = await fetch('/consumos/api/disponibilidad/' + idTipoServicio);
         const data = await response.json();
-        const alertDiv = document.getElementById('disponibilidad_alert');
-
         if (data.success && !data.todo_disponible) {
-            const faltantes = data.disponibilidad.filter(item => item.obligatorio && !item.suficiente);
-            alertDiv.innerHTML = `<div class="alert alert-warning"><small><strong><i class="bi bi-exclamation-triangle"></i> Insumos sin stock:</strong> ${faltantes.map(f => f.nombre).join(', ')}</small></div>`;
-            alertDiv.style.display = 'block';
+            const faltantes = data.disponibilidad.filter(i => i.obligatorio && !i.suficiente);
+            alertDiv.innerHTML = '<div class="alert alert-warning mb-0"><i data-lucide="triangle-alert"></i><div><strong>Stock insuficiente:</strong> ' +
+                faltantes.map(f => esc(f.nombre)).join(', ') + '</div></div>';
+        } else if (data.success) {
+            alertDiv.innerHTML = '<div class="alert alert-success mb-0"><i data-lucide="circle-check"></i><div>Hay stock suficiente para todo el protocolo.</div></div>';
         } else {
-            alertDiv.style.display = 'none';
+            alertDiv.innerHTML = '';
+        }
+        DM5.icons();
+    } catch (error) {
+        console.error('Error:', error);
+        alertDiv.innerHTML = '';
+    }
+}
+
+function mostrarAlertaLotesVencidos(lotes) {
+    ocultarAlertaLotesVencidos();
+    const porInsumo = {};
+    lotes.forEach(l => {
+        porInsumo[l.id_insumo] = porInsumo[l.id_insumo] || { nombre: l.nombre_generico, n: 0 };
+        porInsumo[l.id_insumo].n++;
+    });
+    const lista = Object.values(porInsumo).map(i => '<li><strong>' + esc(i.nombre) + '</strong>: ' + i.n + ' lote(s)</li>').join('');
+
+    const alerta = document.createElement('div');
+    alerta.id = 'alerta_lotes_vencidos';
+    alerta.className = 'alert alert-danger mb-3';
+    alerta.setAttribute('role', 'alert');
+    alerta.innerHTML =
+        '<i data-lucide="calendar-x"></i>' +
+        '<div class="flex-grow-1">' +
+            '<p class="alert-heading">Hay lotes vencidos con stock</p>' +
+            '<ul class="mb-2 ps-3">' + lista + '</ul>' +
+            '<p class="mb-2 small">Se excluyeron automáticamente del consumo. Retíralos del almacén.</p>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger" onclick="descartarAlertaVencidos()"><i data-lucide="check" class="icon-sm"></i> Entendido, no volver a mostrar</button>' +
+        '</div>';
+    const form = document.getElementById('consumoForm');
+    form.insertBefore(alerta, form.querySelector('.card'));
+    DM5.icons();
+}
+
+function ocultarAlertaLotesVencidos() {
+    const el = document.getElementById('alerta_lotes_vencidos');
+    if (el) el.remove();
+}
+
+async function descartarAlertaVencidos() {
+    if (lotesVencidosPendientes.length === 0) return ocultarAlertaLotesVencidos();
+    try {
+        const response = await fetch('/consumos/api/lotes-vencidos/notificar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lotes_ids: lotesVencidosPendientes.map(l => l.id_lote) })
+        });
+        const data = await response.json();
+        if (data.success) {
+            ocultarAlertaLotesVencidos();
+            lotesVencidosPendientes = [];
+        } else {
+            DM5.toast(data.error || 'No se pudo actualizar', 'danger');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -423,11 +351,65 @@ async function verificarDisponibilidad(idTipoServicio) {
 }
 
 function mostrarMensajeInicial() {
-    document.getElementById('protocolo_mensaje').innerHTML = '<div class="text-center text-muted py-4"><h5><i class="bi bi-hand-index-thumb"></i> Selecciona un tipo de servicio</h5></div>';
-    document.getElementById('protocolo_mensaje').style.display = 'block';
-    document.getElementById('protocolo_container').style.display = 'none';
     insumosConsumo.clear();
     updateTotalAplicaciones();
     updateSubmitButton();
     ocultarAlertaLotesVencidos();
+    document.getElementById('disponibilidad_alert').innerHTML = '';
+    setMensaje(emptyState('mouse-pointer-click', 'Selecciona un servicio', 'Los insumos del protocolo aparecerán aquí para que ajustes las cantidades.'));
+}
+
+// ---------- Sobrantes tras agotar lotes ----------
+function mostrarModalSobrantes(lotes) {
+    const container = document.getElementById('sobrantes_list_dinamico');
+    container.innerHTML = '';
+
+    lotes.forEach(lote => {
+        const id = lote.id_lote;
+        const card = document.createElement('div');
+        card.className = 'card mb-3';
+        card.innerHTML =
+            '<div class="card-body">' +
+                '<p class="fw-semibold mb-1">' + esc(lote.nombre_insumo) + '</p>' +
+                '<p class="text-muted small mb-3">Lote <code>' + esc(lote.numero_lote) + '</code> · ' + lote.cantidad_fisica + ' unidad(es) físicas</p>' +
+                '<div class="btn-group w-100 mb-2" role="group" aria-label="¿Quedó sobrante?">' +
+                    '<input type="radio" class="btn-check" name="sobrante_' + id + '" id="no_' + id + '" value="no" checked>' +
+                    '<label class="btn btn-outline-secondary" for="no_' + id + '">No, se agotó</label>' +
+                    '<input type="radio" class="btn-check" name="sobrante_' + id + '" id="si_' + id + '" value="si">' +
+                    '<label class="btn btn-outline-secondary" for="si_' + id + '">Sí, quedó producto</label>' +
+                '</div>' +
+                '<div id="cantidad_sobrante_' + id + '" style="display: none;">' +
+                    '<label class="form-label" for="aplicaciones_' + id + '">Aplicaciones sobrantes</label>' +
+                    '<input type="number" class="form-control" min="1" id="aplicaciones_' + id + '" placeholder="Ej: 5">' +
+                '</div>' +
+            '</div>';
+        container.appendChild(card);
+
+        const box = card.querySelector('#cantidad_sobrante_' + id);
+        card.querySelector('#si_' + id).addEventListener('change', () => { box.style.display = 'block'; });
+        card.querySelector('#no_' + id).addEventListener('change', () => { box.style.display = 'none'; });
+    });
+
+    new bootstrap.Modal(document.getElementById('verificarSobrantesModal')).show();
+}
+
+async function guardarAjustesSobrantes() {
+    for (const lote of window.LOTES_AGOTADOS || []) {
+        const tieneSobrante = document.getElementById('si_' + lote.id_lote).checked;
+        const aplicaciones = tieneSobrante ? parseInt(document.getElementById('aplicaciones_' + lote.id_lote).value) || 0 : 0;
+        try {
+            await fetch('/consumos/api/ajuste', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_lote: lote.id_lote,
+                    aplicaciones_sobrantes: aplicaciones,
+                    motivo: tieneSobrante ? 'Verificación post-consumo: sobrante' : 'Verificación post-consumo: agotado'
+                })
+            });
+        } catch (error) {
+            console.error('Error guardando ajuste:', error);
+        }
+    }
+    window.location.href = '/consumos/registro';
 }

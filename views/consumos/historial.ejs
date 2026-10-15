@@ -1,219 +1,141 @@
-<% 
+<%
+const totalAplicaciones = consumos.reduce((s, c) => s + (parseInt(c.cantidad) || 0), 0);
+const recibos = new Set(consumos.map(c => c.numero_recibo)).size;
+
 const body = `
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3><i class="bi bi-journal-text"></i> Historial de Consumos con Kardex</h3>
-                <div class="d-flex gap-2">
-                    <a href="/consumos/registro" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Nuevo Registro</a>
-                    <a href="/consumos/estadisticas" class="btn btn-outline-info"><i class="bi bi-bar-chart-line"></i> Estadísticas</a>
-                </div>
-            </div>
-        </div>
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="history" class="icon-sm"></i> Inventario</div>
+        <h1 class="page-title">Historial de consumos</h1>
+        <p class="page-subtitle">Salidas registradas en el kardex a tu nombre (últimos 100 movimientos).</p>
     </div>
-
-    <!-- Filtros -->
-    <div class="row mb-4">
-        <div class="col-md-6 col-lg-4">
-            <div class="card">
-                <div class="card-body">
-                    <h6><i class="bi bi-funnel"></i> Filtros</h6>
-                    <form method="GET" action="/consumos/historial">
-                        <div class="mb-3">
-                            <label for="fecha" class="form-label">Fecha:</label>
-                            <input type="date" class="form-control" id="fecha" name="fecha" 
-                                   value="${fechaFiltro || ''}">
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
-                            <a href="/consumos/historial" class="btn btn-outline-secondary btn-sm">Limpiar</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <div class="page-actions">
+        <a href="/consumos/estadisticas" class="btn btn-light"><i data-lucide="chart-column"></i> Estadísticas</a>
+        <a href="/consumos/registro" class="btn btn-primary"><i data-lucide="plus"></i> Registrar consumo</a>
     </div>
+</div>
 
-    ${locals.error ? `
-        <div class="alert alert-danger">${error}</div>
-    ` : ''}
+${locals.error ? `<div class="alert alert-danger mb-3" role="alert"><i data-lucide="circle-alert"></i><div>${error}</div></div>` : ''}
 
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" action="/consumos/historial" class="filter-bar">
+            <div class="filter-field">
+                <label for="fecha" class="form-label">Mostrar desde</label>
+                <input type="date" class="form-control" id="fecha" name="fecha" value="${locals.fechaFiltro || ''}">
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i data-lucide="funnel"></i> Filtrar</button>
+                ${locals.fechaFiltro ? `<a href="/consumos/historial" class="btn btn-light"><i data-lucide="x"></i> Limpiar</a>` : ''}
+            </div>
+            ${consumos.length > 0 ? `
+            <div class="ms-auto d-flex gap-4 text-end">
+                <div><div class="stat-label">Movimientos</div><div class="fw-bold fs-5 num">${consumos.length}</div></div>
+                <div><div class="stat-label">Recibos</div><div class="fw-bold fs-5 num">${recibos}</div></div>
+                <div><div class="stat-label">Aplicaciones</div><div class="fw-bold fs-5 num">${totalAplicaciones}</div></div>
+            </div>` : ''}
+        </form>
+    </div>
+</div>
+
+<div class="card table-card">
     ${consumos.length === 0 ? `
-        <div class="row">
-            <div class="col-12">
-                <div class="text-center py-5">
-                    <h4 class="text-muted"><i class="bi bi-file-earmark-text"></i> No hay registros de consumo</h4>
-                    <p class="text-muted">
-                        ${fechaFiltro ? 'No se encontraron consumos para la fecha seleccionada' : 'Aún no has registrado ningún consumo'}
-                    </p>
-                    <a href="/consumos/registro" class="btn btn-primary btn-lg">
-                        <i class="bi bi-pencil-square"></i> Registrar primer consumo
-                    </a>
-                </div>
-            </div>
+        <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="inbox"></i></div>
+            <h3>${locals.fechaFiltro ? 'Sin consumos desde esa fecha' : 'Aún no registraste consumos'}</h3>
+            <p>${locals.fechaFiltro ? 'Prueba con una fecha anterior o limpia el filtro.' : 'Cuando registres el consumo de un servicio, sus salidas aparecerán aquí.'}</p>
+            <a href="/consumos/registro" class="btn btn-primary"><i data-lucide="plus"></i> Registrar consumo</a>
         </div>
     ` : `
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6><i class="bi bi-journal-text"></i> Registros de Consumo con Kardex</h6>
-                        <span class="badge bg-primary">${consumos.length} registro(s)</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Fecha/Hora</th>
-                                        <th>Servicio</th>                                        
-                                        <th>Total Items</th>
-                                        <th>Valor Total</th>
-                                        <th>Observaciones</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${consumos.map(consumo => {
-                                        const fechaLocal = new Date(consumo.fecha_consumo).toLocaleDateString('es-BO');
-                                        const timeOptions = { hour: '2-digit', minute: '2-digit' };
-                                        const horaLocal = new Date(consumo.fecha_consumo).toLocaleTimeString('es-BO', timeOptions);                                        
-                                        const observacionesInfo = consumo.observaciones ? 
-                                            '<small>' + consumo.observaciones + '</small>' : 
-                                            '<span class="text-muted">-</span>';
-                                        
-                                        return '<tr>' +
-                                            '<td>' +
-                                                '<strong>' + fechaLocal + '</strong>' +
-                                                '<br>' +
-                                                '<small class="text-muted">' + horaLocal + '</small>' +
-                                            '</td>' +
-                                            '<td>' +
-                                                '<span class="badge bg-info">' +
-                                                    (consumo.tipo_servicio_nombre || 'N/A') +
-                                                '</span>' +
-                                            '</td>' +
-                                            '<td>' +
-                                                '<span class="badge bg-success">' + (consumo.total_insumos || 0) + ' tipos</span>' +
-                                                '<br>' +
-                                                '<small class="text-muted">' + (consumo.total_detalles || 0) + ' movimientos</small>' +
-                                            '</td>' +
-                                            '<td>' +
-                                                '<strong>Bs. ' + parseFloat(consumo.valor_total_consumido || 0).toFixed(2) + '</strong>' +
-                                            '</td>' +
-                                            '<td>' + observacionesInfo + '</td>' +
-                                            '<td>' +
-                                                '<button class="btn btn-sm btn-outline-info" ' +
-                                                        'onclick="verDetalles(' + consumo.id_consumo + ')" ' +
-                                                        'data-bs-toggle="modal" data-bs-target="#detallesModal">' +
-                                                    '<i class="bi bi-eye"></i> Ver Detalles' +
-                                                '</button>' +
-                                            '</td>' +
-                                        '</tr>';
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Recibo</th>
+                        <th>Insumo</th>
+                        <th>Lote</th>
+                        <th class="text-end">Aplicaciones</th>
+                        <th class="text-end">Saldo valorado</th>
+                        <th class="text-end"><span class="visually-hidden">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${consumos.map(c => `
+                        <tr>
+                            <td class="num">
+                                <span class="cell-main">${new Date(c.fecha).toLocaleDateString('es-BO')}</span>
+                                <span class="cell-sub">${new Date(c.fecha).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </td>
+                            <td><span class="badge badge-soft-brand">${esc(c.numero_recibo || '—')}</span></td>
+                            <td>
+                                <span class="cell-main">${esc(c.nombre_generico)}</span>
+                                <span class="cell-sub"><code>${esc(c.codigo)}</code></span>
+                            </td>
+                            <td>${c.numero_lote ? `<code>${esc(c.numero_lote)}</code>` : '—'}</td>
+                            <td class="text-end num fw-semibold text-danger-emphasis">−${c.cantidad}</td>
+                            <td class="text-end num">Bs ${parseFloat(c.saldo_valorado || 0).toFixed(2)}</td>
+                            <td class="text-end">
+                                <button type="button" class="btn-icon" onclick="verDetalles(${c.id_detalle})" title="Ver detalle" aria-label="Ver detalle del movimiento">
+                                    <i data-lucide="eye" class="icon-sm"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
         </div>
     `}
 </div>
 
-<!-- Modal para ver detalles del consumo -->
-<div class="modal fade" id="detallesModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<!-- Modal: detalle del movimiento -->
+<div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-journal-text"></i> Detalles del Consumo</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h2 class="modal-title" id="detallesTitulo"><span class="modal-icon"><i data-lucide="receipt"></i></span> Detalle del consumo</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="modal-body">
-                <div id="detalles_content">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary"></div>
-                        <p class="mt-2">Cargando detalles...</p>
-                    </div>
-                </div>
-            </div>
+            <div class="modal-body" id="detalles_content"></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-async function verDetalles(consumoId) {
+const detallesModal = new bootstrap.Modal(document.getElementById('detallesModal'));
+
+async function verDetalles(idDetalle) {
+    const content = document.getElementById('detalles_content');
+    content.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>';
+    detallesModal.show();
     try {
-        const response = await fetch('/consumos/api/detalles/' + consumoId);
+        const response = await fetch('/consumos/api/detalles/' + idDetalle);
         const data = await response.json();
-        
-        const content = document.getElementById('detalles_content');
-        
-        if (data.success && data.detalles.length > 0) {
-            let tableHtml = '<div class="table-responsive">' +
-                '<table class="table table-sm">' +
-                    '<thead class="table-light">' +
-                        '<tr>' +
-                            '<th>Código</th>' +
-                            '<th>Insumo</th>' +
-                            '<th>Lote</th>' +
-                            '<th>Vencimiento</th>' +
-                            '<th>Cantidad</th>' +
-                            '<th>Costo Unit.</th>' +
-                            '<th>Total</th>' +
-                        '</tr>' +
-                    '</thead>' +
-                    '<tbody>';
-            
-            let totalGeneral = 0;
-            
-            data.detalles.forEach(detalle => {
-                const fechaVenc = detalle.fecha_vencimiento ? 
-                    new Date(detalle.fecha_vencimiento).toLocaleDateString('es-BO') : 
-                    'N/A';
-                const costoTotal = parseFloat(detalle.costo_total);
-                totalGeneral += costoTotal;
-                
-                tableHtml += '<tr>' +
-                    '<td><code>' + detalle.codigo + '</code></td>' +
-                    '<td>' +
-                        '<strong>' + detalle.nombre_generico + '</strong>' +
-                        '<br><small class="text-muted">' + (detalle.presentacion || 'N/A') + '</small>' +
-                    '</td>' +
-                    '<td>' +
-                        '<span class="badge bg-light text-dark">' + (detalle.numero_lote || 'N/A') + '</span>' +
-                    '</td>' +
-                    '<td>' + fechaVenc + '</td>' +
-                    '<td>' +
-                        '<span class="badge bg-warning">' + detalle.cantidad_consumida + '</span>' +
-                    '</td>' +
-                    '<td>Bs. ' + parseFloat(detalle.costo_unitario).toFixed(2) + '</td>' +
-                    '<td><strong>Bs. ' + costoTotal.toFixed(2) + '</strong></td>' +
-                '</tr>';
-            });
-            
-            tableHtml += '</tbody>' +
-                '<tfoot class="table-light">' +
-                    '<tr>' +
-                        '<th colspan="6">TOTAL CONSUMO:</th>' +
-                        '<th>Bs. ' + totalGeneral.toFixed(2) + '</th>' +
-                    '</tr>' +
-                '</tfoot>' +
-            '</table>' +
-        '</div>';
-            
-            content.innerHTML = tableHtml;
-        } else {
-            content.innerHTML = '<div class="alert alert-warning">No se encontraron detalles para este consumo.</div>';
-        }
+        if (!response.ok || !data.success) throw new Error(data.error || 'Sin datos');
+        const d = data.detalles;
+        const e = DM5.escape;
+        content.innerHTML =
+            '<p class="fw-semibold mb-0">' + e(d.nombre_generico) + '</p>' +
+            '<p class="text-muted small mb-3"><code>' + e(d.codigo) + '</code> · ' + e(d.presentacion || '') + '</p>' +
+            '<dl class="meta-grid">' +
+                '<div><dt>Fecha</dt><dd>' + DM5.fecha(d.fecha, true) + '</dd></div>' +
+                '<div><dt>Recibo</dt><dd>' + e(d.numero_recibo || '—') + '</dd></div>' +
+                '<div><dt>Aplicaciones</dt><dd>' + e(d.cantidad) + '</dd></div>' +
+                '<div><dt>Costo unitario</dt><dd>' + DM5.moneda(d.costo_unitario) + '</dd></div>' +
+                '<div><dt>Lote</dt><dd>' + e(d.numero_lote || '—') + '</dd></div>' +
+                '<div><dt>Vencimiento</dt><dd>' + DM5.fecha(d.fecha_vencimiento) + '</dd></div>' +
+                '<div><dt>Saldo tras salida</dt><dd>' + e(d.saldo) + ' apl.</dd></div>' +
+                '<div><dt>Saldo valorado</dt><dd>' + DM5.moneda(d.saldo_valorado) + '</dd></div>' +
+                '<div><dt>Kardex</dt><dd>N° ' + e(d.numero_kardex) + ' · ' + e(d.gestion) + '</dd></div>' +
+                '<div><dt>Registrado por</dt><dd>' + e(d.usuario || '—') + '</dd></div>' +
+            '</dl>';
     } catch (error) {
-        console.error('Error cargando detalles:', error);
-        document.getElementById('detalles_content').innerHTML = '<div class="alert alert-danger">Error cargando detalles del consumo.</div>';
+        content.innerHTML = '<div class="alert alert-danger mb-0"><i data-lucide="circle-alert"></i><div>No se pudo cargar el detalle del consumo.</div></div>';
     }
+    DM5.icons();
 }
 </script>
 `;

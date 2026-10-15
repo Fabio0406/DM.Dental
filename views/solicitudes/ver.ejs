@@ -1,148 +1,94 @@
-<% 
-const formatearFecha = (fecha) => {
-    if (!fecha) return 'N/A';
-    const d = new Date(fecha);
-    const dia = String(d.getDate()).padStart(2, '0');
-    const mes = String(d.getMonth() + 1).padStart(2, '0');
-    const anio = d.getFullYear();
-    return `${dia}/${mes}/${anio}`;
-};
+<%
+const formatearFecha = (fecha) => fecha ? new Date(fecha).toLocaleDateString('es-BO', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+const formatearMoneda = (valor) => 'Bs ' + (parseFloat(valor) || 0).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const formatearMoneda = (valor) => {
-    return new Intl.NumberFormat('es-BO', { 
-        style: 'currency', 
-        currency: 'BOB',
-        minimumFractionDigits: 2 
-    }).format(valor || 0);
-};
-
-// Calcular total general
-let totalGeneral = 0;
-if (solicitud.detalles) {
-    solicitud.detalles.forEach(det => {
-        totalGeneral += det.costo_total || 0;
-    });
-}
+const detalles = solicitud.detalles || [];
+// costo_total llega como texto (NUMERIC): sumar como número
+const totalGeneral = detalles.reduce((s, d) => s + (parseFloat(d.costo_total) || 0), 0);
 
 const body = `
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h3><i data-lucide="file-text"></i> Solicitud de Pedido</h3>
-                    <p class="text-muted mb-0">${solicitud.nro_solicitud}</p>
-                </div>
-                <div class="btn-group">
-                    <a href="/solicitudes/exportar/${solicitud.id_solicitud}" 
-                       class="btn btn-success" target="_blank">
-                        <i data-lucide="file-down"></i> Exportar PDF
-                    </a>
-                    <a href="/solicitudes/editar/${solicitud.id_solicitud}" 
-                       class="btn btn-warning">
-                        <i data-lucide="edit"></i> Editar
-                    </a>
-                    <a href="/solicitudes" class="btn btn-outline-secondary">
-                        <i data-lucide="arrow-left"></i> Volver
-                    </a>
-                </div>
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="clipboard-list" class="icon-sm"></i> <a href="/solicitudes">Solicitudes de pedido</a></div>
+        <h1 class="page-title">Solicitud ${esc(solicitud.nro_solicitud)}</h1>
+        <p class="page-subtitle">Emitida el ${formatearFecha(solicitud.fecha)} por ${esc(solicitud.solicitante)}</p>
+    </div>
+    <div class="page-actions">
+        <a href="/solicitudes/editar/${solicitud.id_solicitud}" class="btn btn-light"><i data-lucide="pencil"></i> Editar</a>
+        <a href="/solicitudes/exportar/${solicitud.id_solicitud}" class="btn btn-primary" target="_blank" rel="noopener"><i data-lucide="file-down"></i> Exportar PDF</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header"><h2 class="card-title"><i data-lucide="info"></i> Datos de la solicitud</h2></div>
+            <div class="card-body">
+                <dl class="meta-grid">
+                    <div><dt>N° solicitud</dt><dd>${esc(solicitud.nro_solicitud)}</dd></div>
+                    <div><dt>Fecha</dt><dd>${formatearFecha(solicitud.fecha)}</dd></div>
+                    <div><dt>Material</dt><dd><span class="badge badge-soft-brand">${esc(solicitud.material)}</span></dd></div>
+                    <div><dt>Solicitante</dt><dd>${esc(solicitud.solicitante)}</dd></div>
+                    <div><dt>CI</dt><dd>${solicitud.ci_solicitante}</dd></div>
+                </dl>
             </div>
         </div>
     </div>
-
-    <!-- Información de la solicitud -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i data-lucide="info"></i> Información de la Solicitud</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <strong>N° Solicitud:</strong><br>
-                            <span class="badge bg-info fs-6">${solicitud.nro_solicitud}</span>
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Fecha:</strong><br>
-                            ${formatearFecha(solicitud.fecha)}
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Material:</strong><br>
-                            <span class="badge bg-secondary">${solicitud.material}</span>
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Solicitante:</strong><br>
-                            ${solicitud.solicitante}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabla de detalles -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i data-lucide="list"></i> Detalle de Insumos</h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 50px;">Item</th>
-                                    <th style="width: 100px;">Código</th>
-                                    <th>Detalle</th>
-                                    <th style="width: 100px;">Unidad</th>
-                                    <th style="width: 80px;" class="text-center">Cantidad</th>
-                                    <th style="width: 120px;" class="text-end">P. Unitario</th>
-                                    <th style="width: 120px;" class="text-end">P. Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${solicitud.detalles && solicitud.detalles.length > 0 ? 
-                                    solicitud.detalles.map((det, index) => `
-                                        <tr>
-                                            <td class="text-center">${index + 1}</td>
-                                            <td><code>${det.codigo}</code></td>
-                                            <td>${det.nombre_generico}</td>
-                                            <td class="text-center">${det.presentacion || 'Unidad'}</td>
-                                            <td class="text-center">${det.cantidad}</td>
-                                            <td class="text-end">${formatearMoneda(det.costo_unitario)}</td>
-                                            <td class="text-end">${formatearMoneda(det.costo_total)}</td>
-                                        </tr>
-                                    `).join('') : `
-                                        <tr>
-                                            <td colspan="7" class="text-center py-4 text-muted">
-                                                No hay insumos en esta solicitud
-                                            </td>
-                                        </tr>
-                                    `
-                                }
-                            </tbody>
-                            <tfoot class="table-light">
-                                <tr>
-                                    <td colspan="6" class="text-end"><strong>TOTAL GENERAL:</strong></td>
-                                    <td class="text-end"><strong>${formatearMoneda(totalGeneral)}</strong></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
+    <div class="col-lg-4">
+        <div class="stat-card tone-success">
+            <span class="stat-icon"><i data-lucide="wallet"></i></span>
+            <div>
+                <p class="stat-label">Total de la solicitud</p>
+                <p class="stat-value">${formatearMoneda(totalGeneral)}</p>
+                <p class="stat-hint">${detalles.length} ${detalles.length === 1 ? 'ítem' : 'ítems'}</p>
             </div>
         </div>
     </div>
 </div>
 
-<script>
-    // Reinicializar Lucide icons
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-</script>
+<div class="card table-card">
+    <div class="card-header"><h2 class="card-title"><i data-lucide="list"></i> Detalle de insumos</h2></div>
+    ${detalles.length === 0 ? `
+        <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="package-open"></i></div>
+            <h3>Sin insumos</h3>
+            <p>Esta solicitud no tiene ítems. Edítala para agregar insumos.</p>
+        </div>
+    ` : `
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 48px">#</th>
+                        <th>Insumo</th>
+                        <th>Unidad</th>
+                        <th class="text-end">Cantidad</th>
+                        <th class="text-end">P. unitario</th>
+                        <th class="text-end">P. total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${detalles.map((det, i) => `
+                        <tr>
+                            <td class="text-muted num">${i + 1}</td>
+                            <td><span class="cell-main">${esc(det.nombre_generico)}</span><span class="cell-sub"><code>${esc(det.codigo)}</code></span></td>
+                            <td>${esc(det.presentacion || 'Unidad')}</td>
+                            <td class="text-end num">${det.cantidad}</td>
+                            <td class="text-end num">${formatearMoneda(det.costo_unitario)}</td>
+                            <td class="text-end num fw-semibold">${formatearMoneda(det.costo_total)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="text-end">Total general</td>
+                        <td class="text-end num">${formatearMoneda(totalGeneral)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `}
+</div>
 `;
 %>
 

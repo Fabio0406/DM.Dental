@@ -1,3 +1,28 @@
+<%
+const pageTitle = (title || 'Sistema DM-5').split(' - ')[0];
+const path = locals.currentPath || '';
+
+// Un enlace queda activo si la ruta coincide con alguno de sus prefijos
+const isActive = (...prefixes) => prefixes.some(p => path === p || path.startsWith(p + '/'));
+
+const navSections = [
+    { items: [
+        { href: '/dashboard', icon: 'layout-dashboard', label: 'Dashboard', active: isActive('/dashboard') }
+    ]},
+    { title: 'Inventario', items: [
+        { href: '/consumos/registro', icon: 'package-minus', label: 'Registrar consumo', active: isActive('/consumos/registro') },
+        { href: '/consumos/historial', icon: 'history', label: 'Historial de consumos', active: isActive('/consumos/historial', '/consumos/estadisticas') },
+        { href: '/kardex', icon: 'book-open', label: 'Kardex', active: isActive('/kardex') },
+        { href: '/solicitudes', icon: 'clipboard-list', label: 'Solicitudes de pedido', active: isActive('/solicitudes') }
+    ]},
+    { title: 'Ingreso de insumos', items: [
+        { href: '/ocr/upload', icon: 'scan-line', label: 'Escanear formulario', active: isActive('/ocr/upload') },
+        { href: '/ocr', icon: 'files', label: 'Formularios SALMI', active: path === '/ocr' || isActive('/ocr/review') }
+    ]}
+];
+
+const iniciales = user ? ((user.nombres || ' ')[0] + (user.apellidos || ' ')[0]).toUpperCase() : '';
+%>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -5,271 +30,196 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %></title>
-    <!-- Bootstrap 5 Local -->
+    <link rel="icon" href="/images/escudo.png">
+    <script>
+        // Aplicar tema antes del primer pintado para evitar parpadeo
+        try {
+            const t = localStorage.getItem('dm5-theme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch (e) {}
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="/node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Lucide Icons Local - SVG puro, nítidos -->
-    <script src="/node_modules/lucide/dist/umd/lucide.min.js"></script>
     <link href="/css/style.css" rel="stylesheet">
+    <script src="/node_modules/lucide/dist/umd/lucide.min.js"></script>
+    <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/main.js"></script>
 </head>
 
+<% if (locals.isAuthenticated) { %>
 <body>
-    <!-- Navbar (solo si está autenticado) -->
-    <% if (locals.isAuthenticated) { %>
-    <nav class="navbar navbar-dark dm5-navbar-solid">
-        <div class="container-fluid px-3 d-flex align-items-center">
-            <!-- Botón hamburguesa -->
-            <button class="btn btn-link text-white p-0 dm5-menu-toggle" type="button" id="sidebarToggle">
-                <i data-lucide="menu"></i>
-            </button>
-            
-            <a class="navbar-brand ms-2 mb-0" href="/dashboard">Sistema DM-5</a>
-            
-            <div class="navbar-nav ms-auto d-flex flex-row align-items-center">
-                <!-- Icono de Campana de Alertas -->
-                <div class="nav-item me-3">
-                    <a class="nav-link position-relative p-0" href="#" id="alertasNavIcon" data-bs-toggle="dropdown">
-                        <i data-lucide="bell" style="width: 20px; height: 20px;"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="alertasBadge" style="display: none; font-size: 0.65rem;">
-                            0
-                        </span>
+    <script>
+        try { if (localStorage.getItem('dm5-sidebar') === 'collapsed') document.body.classList.add('sidebar-collapsed'); } catch (e) {}
+    </script>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+    <!-- Sidebar -->
+    <aside class="app-sidebar" id="sidebar" aria-label="Navegación principal">
+        <a class="sidebar-brand" href="/dashboard">
+            <img src="/images/escudo.png" alt="">
+            <span>
+                <span class="brand-name d-block">Sistema DM-5</span>
+                <span class="brand-sub">Inventario odontológico</span>
+            </span>
+        </a>
+
+        <nav class="sidebar-nav">
+            <% navSections.forEach(section => { %>
+                <% if (section.title) { %><div class="sidebar-section"><%= section.title %></div><% } %>
+                <% section.items.forEach(item => { %>
+                    <a class="sidebar-link<%= item.active ? ' active' : '' %>" href="<%= item.href %>" <%- item.active ? 'aria-current="page"' : '' %>>
+                        <i data-lucide="<%= item.icon %>"></i>
+                        <span><%= item.label %></span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px; max-height: 400px; overflow-y: auto;">
-                        <li class="dropdown-header d-flex justify-content-between align-items-center">
-                            <span><i data-lucide="bell" class="me-1"></i> Alertas</span>
-                            <button class="btn btn-sm btn-link p-0" id="marcarTodasLeidas" style="font-size: 0.75rem;">Marcar todas leídas</button>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li id="alertasListaDropdown">
-                            <div class="text-center text-muted py-3">
-                                <i data-lucide="loader" class="me-1"></i> Cargando...
-                            </div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item text-center small" href="/dashboard">
-                                <i data-lucide="layout-dashboard" class="me-1"></i> Ver Dashboard
-                            </a>
-                        </li>
-                    </ul>
+                <% }) %>
+            <% }) %>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema de color">
+                <span class="d-inline-flex align-items-center gap-2">
+                    <i data-lucide="moon" class="icon-light"></i>
+                    <i data-lucide="sun" class="icon-dark"></i>
+                    <span id="themeLabel">Modo oscuro</span>
+                </span>
+                <i data-lucide="chevron-right" class="icon-sm"></i>
+            </button>
+        </div>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <div class="app-main">
+        <!-- Topbar -->
+        <header class="app-topbar">
+            <button type="button" class="icon-btn" id="sidebarToggle" aria-label="Mostrar u ocultar menú" aria-controls="sidebar">
+                <i data-lucide="panel-left"></i>
+            </button>
+            <p class="topbar-title"><%= pageTitle %></p>
+
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <!-- Alertas -->
+                <div class="dropdown">
+                    <button type="button" class="icon-btn" id="alertasNavIcon" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="Alertas">
+                        <i data-lucide="bell"></i>
+                        <span class="notif-dot" id="alertasBadge" style="display: none;">0</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end notif-menu">
+                        <div class="notif-head">
+                            <strong class="small">Alertas pendientes</strong>
+                            <button type="button" class="btn btn-ghost btn-sm" id="marcarTodasLeidas">
+                                <i data-lucide="check-check" class="icon-sm"></i> Marcar leídas
+                            </button>
+                        </div>
+                        <div class="notif-list" id="alertasListaDropdown">
+                            <div class="text-center text-muted small py-4">Cargando…</div>
+                        </div>
+                        <div class="notif-foot">
+                            <a class="btn btn-ghost btn-sm w-100" href="/dashboard">Ir al dashboard</a>
+                        </div>
+                    </div>
                 </div>
-                
-                <!-- Dropdown de Usuario -->
-                <div class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle py-0 dm5-navbar-user" href="#" role="button" data-bs-toggle="dropdown">
-                        <%= user.nombres %> <%= user.apellidos %>
+
+                <!-- Usuario -->
+                <div class="dropdown">
+                    <a class="user-chip" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="avatar"><%= iniciales %></span>
+                        <span class="d-none d-md-inline"><%= user.nombres %> <%= user.apellidos %></span>
+                        <i data-lucide="chevron-down" class="icon-sm text-muted"></i>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/users/profile"><i data-lucide="user" class="me-2"></i>Mi Perfil</a></li>
+                        <li class="px-3 py-2">
+                            <div class="fw-semibold small"><%= user.nombres %> <%= user.apellidos %></div>
+                            <div class="text-muted small">@<%= user.username %></div>
+                        </li>
                         <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/users/profile"><i data-lucide="user-cog"></i> Mi perfil</a></li>
                         <li>
-                            <form method="POST" action="/auth/logout" class="d-inline">
-                                <button type="submit" class="dropdown-item"><i data-lucide="log-out" class="me-2"></i>Cerrar Sesión</button>
+                            <form method="POST" action="/auth/logout">
+                                <button type="submit" class="dropdown-item text-danger"><i data-lucide="log-out"></i> Cerrar sesión</button>
                             </form>
                         </li>
                     </ul>
                 </div>
             </div>
-        </div>
-    </nav>
+        </header>
 
-    <!-- Sidebar Fijo -->
-    <div class="dm5-sidebar" id="sidebar">
-        <div class="dm5-sidebar-header">
-            <h5>
-                <i data-lucide="layout-grid" class="me-2"></i>Menú Principal
-            </h5>
-        </div>
-        <div class="dm5-sidebar-body">
-            <nav class="nav flex-column">
-                <a class="nav-link" href="/dashboard">
-                    <i data-lucide="gauge"></i>
-                    <span>Dashboard</span>
-                </a>
-                
-                <div class="nav-section-title">Gestión de Pacientes</div>
-                <a class="nav-link" href="/pacientes">
-                    <i data-lucide="users"></i>
-                    <span>Lista de Pacientes</span>
-                </a>
-                <a class="nav-link" href="/pacientes/nuevo">
-                    <i data-lucide="user-plus"></i>
-                    <span>Nuevo Paciente</span>
-                </a>
-                
-                <div class="nav-section-title">Proyecciones Dentales</div>
-                <a class="nav-link" href="/proyecciones/nueva">
-                    <i data-lucide="wand-2"></i>
-                    <span>Nueva Proyección</span>
-                </a>
-                <a class="nav-link" href="/proyecciones/historial">
-                    <i data-lucide="history"></i>
-                    <span>Historial</span>
-                </a>
-                
-                <div class="nav-section-title">Inventario</div>
-                <a class="nav-link" href="/consumos/registro">
-                    <i data-lucide="package"></i>
-                    <span>Registrar Consumo</span>
-                </a>
-                <a class="nav-link" href="/consumos/historial">
-                    <i data-lucide="clipboard-list"></i>
-                    <span>Historial de Consumos</span>
-                </a>
-                <a class="nav-link" href="/kardex">
-                    <i data-lucide="book-open"></i>
-                    <span>Kardex</span>
-                </a>
-                <a class="nav-link" href="/solicitudes">
-                    <i data-lucide="file-signature"></i>
-                    <span>Solicitud de Pedido</span>
-                </a>
-                
-                <div class="nav-section-title">OCR y Formularios</div>
-                <a class="nav-link" href="/ocr/upload">
-                    <i data-lucide="scan-line"></i>
-                    <span>Escanear Formulario</span>
-                </a>
-                <a class="nav-link" href="/ocr">
-                    <i data-lucide="list-checks"></i>
-                    <span>Formularios Procesados</span>
-                </a>
-            </nav>
-            
-            <!-- Toggle Modo Oscuro -->
-            <div class="dm5-theme-toggle">
-                <div class="d-flex align-items-center justify-content-between">
-                    <span class="dm5-theme-label">
-                        <i data-lucide="moon" class="me-2"></i>Modo Oscuro
-                    </span>
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input dm5-theme-switch" type="checkbox" role="switch" id="darkModeToggle">
-                    </div>
-                </div>
-            </div>
-        </div>
+        <main class="app-content" id="contenido">
+            <%- body %>
+        </main>
     </div>
-    <% } %>
 
-    <!-- Contenido principal -->
-    <main class="dm5-main-content" id="mainContent">
-        <%- body %>
-    </main>
-
-    <!-- Bootstrap JS Local -->
-    <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/main.js"></script>
-    
     <script>
-        // Inicializar Lucide Icons
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-    </script>
-    
-    <% if (locals.isAuthenticated) { %>
-    <script>
-        // Toggle del sidebar
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const navbar = document.querySelector('.dm5-navbar-solid');
-        
-        let sidebarOpen = false;
-        
-        sidebarToggle.addEventListener('click', function() {
-            sidebarOpen = !sidebarOpen;
-            
-            if (sidebarOpen) {
-                sidebar.classList.add('open');
-                mainContent.classList.add('shifted');
-                navbar.classList.add('shifted');
-            } else {
-                sidebar.classList.remove('open');
-                mainContent.classList.remove('shifted');
-                navbar.classList.remove('shifted');
-            }
-        });
-        
-        // Cerrar sidebar al hacer clic en un enlace (en móviles)
-        const navLinks = sidebar.querySelectorAll('.nav-link');
-        navLinks.forEach(link => {
-            link.addEventListener('click', function() {
-                if (window.innerWidth < 992) {
-                    sidebarOpen = false;
-                    sidebar.classList.remove('open');
-                    mainContent.classList.remove('shifted');
-                    navbar.classList.remove('shifted');
+        // ---- Sidebar ----
+        (function () {
+            const body = document.body;
+            const desktop = () => window.matchMedia('(min-width: 992px)').matches;
+            document.getElementById('sidebarToggle').addEventListener('click', function () {
+                if (desktop()) {
+                    body.classList.toggle('sidebar-collapsed');
+                    try { localStorage.setItem('dm5-sidebar', body.classList.contains('sidebar-collapsed') ? 'collapsed' : 'open'); } catch (e) {}
+                } else {
+                    body.classList.toggle('sidebar-open');
                 }
             });
-        });
-        
-        // Toggle Modo Oscuro
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const htmlElement = document.documentElement;
-        
-        // Cargar preferencia guardada
-        const savedTheme = localStorage.getItem('dm5-theme');
-        if (savedTheme === 'dark') {
-            htmlElement.setAttribute('data-theme', 'dark');
-            darkModeToggle.checked = true;
-        }
-        
-        darkModeToggle.addEventListener('change', function() {
-            if (this.checked) {
-                htmlElement.setAttribute('data-theme', 'dark');
-                localStorage.setItem('dm5-theme', 'dark');
-            } else {
-                htmlElement.removeAttribute('data-theme');
-                localStorage.setItem('dm5-theme', 'light');
-            }
-        });
-    </script>
-    <script>
-        // Sistema de Alertas en Navbar
+            document.getElementById('sidebarBackdrop').addEventListener('click', () => body.classList.remove('sidebar-open'));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') body.classList.remove('sidebar-open'); });
+        })();
+
+        // ---- Tema ----
+        (function () {
+            const root = document.documentElement;
+            const label = document.getElementById('themeLabel');
+            const sync = () => { label.textContent = root.getAttribute('data-theme') === 'dark' ? 'Modo claro' : 'Modo oscuro'; };
+            sync();
+            document.getElementById('themeToggle').addEventListener('click', function () {
+                const dark = root.getAttribute('data-theme') !== 'dark';
+                if (dark) root.setAttribute('data-theme', 'dark'); else root.removeAttribute('data-theme');
+                try { localStorage.setItem('dm5-theme', dark ? 'dark' : 'light'); } catch (e) {}
+                sync();
+                document.dispatchEvent(new CustomEvent('dm5:themechange'));
+            });
+        })();
+
+        // ---- Alertas en la barra superior ----
         const alertasBadge = document.getElementById('alertasBadge');
         const alertasLista = document.getElementById('alertasListaDropdown');
-        const marcarTodasBtn = document.getElementById('marcarTodasLeidas');
 
-        // Cargar alertas al abrir dropdown
-        document.getElementById('alertasNavIcon').addEventListener('click', cargarAlertasDropdown);
+        document.getElementById('alertasNavIcon').addEventListener('show.bs.dropdown', cargarAlertasDropdown);
 
         async function cargarAlertasDropdown() {
             try {
                 const response = await fetch('/alertas/no-leidas');
                 const data = await response.json();
-                
+
                 if (data.success && data.alertas.length > 0) {
-                    alertasLista.innerHTML = data.alertas.slice(0, 5).map(alerta => {
-                        const fecha = new Date(alerta.fecha_creacion).toLocaleDateString('es-BO');
+                    alertasLista.innerHTML = data.alertas.slice(0, 6).map(alerta => {
                         const esVencimiento = alerta.titulo.includes('Vencimiento') || alerta.titulo.includes('VENCIDO');
-                        const iconColor = esVencimiento ? '#f59e0b' : '#ef4444';
-                        const iconName = esVencimiento ? 'clock' : 'alert-triangle';
-                        
-                        return '<a class="dropdown-item py-2" href="#" onclick="marcarAlertaLeida(' + alerta.id_alerta + ')">' +
-                            '<div class="d-flex align-items-start">' +
-                                '<i data-lucide="' + iconName + '" style="width: 16px; height: 16px; color: ' + iconColor + '; flex-shrink: 0; margin-top: 2px;"></i>' +
-                                '<div class="ms-2" style="font-size: 0.8rem;">' +
-                                    '<div class="fw-bold">' + alerta.titulo + '</div>' +
-                                    '<div class="text-muted text-truncate" style="max-width: 250px;">' + (alerta.codigo || '') + ' ' + (alerta.nombre_generico || '') + '</div>' +
-                                    '<small class="text-muted">' + fecha + '</small>' +
-                                '</div>' +
+                        const tono = esVencimiento ? 'warning' : 'danger';
+                        const icono = esVencimiento ? 'clock' : 'triangle-alert';
+                        return '<div class="notif-item" role="button" tabindex="0" onclick="marcarAlertaLeida(' + alerta.id_alerta + ')" title="Marcar como leída">' +
+                            '<span class="notif-icon ' + tono + '"><i data-lucide="' + icono + '" class="icon-sm"></i></span>' +
+                            '<div class="flex-grow-1 min-w-0">' +
+                                '<div class="notif-title">' + DM5.escape(alerta.titulo) + '</div>' +
+                                '<div class="notif-meta text-truncate">' + DM5.escape((alerta.codigo || '') + ' ' + (alerta.nombre_generico || '')) + '</div>' +
+                                '<div class="notif-meta">' + DM5.fecha(alerta.fecha_creacion) + '</div>' +
                             '</div>' +
-                        '</a>';
+                        '</div>';
                     }).join('');
-                    
-                    if (data.alertas.length > 5) {
-                        alertasLista.innerHTML += '<div class="text-center small text-muted py-1">+' + (data.alertas.length - 5) + ' alertas más</div>';
+
+                    if (data.alertas.length > 6) {
+                        alertasLista.innerHTML += '<div class="text-center small text-muted py-2">+' + (data.alertas.length - 6) + ' alertas más</div>';
                     }
-                    
-                    // Reinicializar iconos
-                    if (typeof lucide !== 'undefined') lucide.createIcons();
                 } else {
-                    alertasLista.innerHTML = '<div class="text-center text-muted py-3"><i data-lucide="check-circle" class="me-1"></i> Sin alertas pendientes</div>';
-                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                    alertasLista.innerHTML = '<div class="empty-state py-4"><div class="empty-icon" style="width:48px;height:48px"><i data-lucide="bell-off"></i></div><p class="mb-0 small">No tienes alertas pendientes</p></div>';
                 }
+                DM5.icons();
             } catch (error) {
                 console.error('Error cargando alertas:', error);
-                alertasLista.innerHTML = '<div class="text-center text-danger py-2">Error al cargar</div>';
+                alertasLista.innerHTML = '<div class="text-center text-danger small py-3">No se pudieron cargar las alertas</div>';
             }
         }
 
@@ -277,10 +227,9 @@
             try {
                 const response = await fetch('/alertas/contar');
                 const data = await response.json();
-                
                 if (data.success && data.total > 0) {
                     alertasBadge.textContent = data.total > 99 ? '99+' : data.total;
-                    alertasBadge.style.display = 'inline';
+                    alertasBadge.style.display = 'inline-block';
                 } else {
                     alertasBadge.style.display = 'none';
                 }
@@ -299,9 +248,7 @@
             }
         }
 
-        marcarTodasBtn.addEventListener('click', async function(e) {
-            e.preventDefault();
-            e.stopPropagation();
+        document.getElementById('marcarTodasLeidas').addEventListener('click', async function () {
             try {
                 await fetch('/alertas/marcar-todas-leidas', { method: 'PUT' });
                 actualizarContadorAlertas();
@@ -311,13 +258,16 @@
             }
         });
 
-        // Actualizar contador al cargar la página
         actualizarContadorAlertas();
-        
-        // Actualizar cada 5 minutos
         setInterval(actualizarContadorAlertas, 300000);
     </script>
-    <% } %>
+    <script>DM5.icons();</script>
 </body>
+<% } else { %>
+<body>
+    <%- body %>
+    <script>DM5.icons();</script>
+</body>
+<% } %>
 
 </html>

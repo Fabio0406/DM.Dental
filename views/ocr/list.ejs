@@ -1,101 +1,96 @@
-<% 
+<%
+const ESTADOS = {
+    procesando: { tono: 'info', icono: 'loader-circle', texto: 'Leyendo' },
+    pendiente: { tono: 'warning', icono: 'hourglass', texto: 'Pendiente de revisión' },
+    error: { tono: 'danger', icono: 'circle-alert', texto: 'Error de lectura' },
+    importado: { tono: 'success', icono: 'circle-check', texto: 'Importado' },
+    cancelado: { tono: 'neutral', icono: 'ban', texto: 'Cancelado' }
+};
+const conteo = formularios.reduce((c, f) => { c[f.estado] = (c[f.estado] || 0) + 1; return c; }, {});
+const porRevisar = (conteo.pendiente || 0) + (conteo.error || 0);
+
 const body = `
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3><i class="bi bi-journal-text"></i> Formularios SALMI</h3>
-                <a href="/ocr/upload" class="btn btn-primary">
-                    <i class="bi bi-camera"></i> Escanear nuevo formulario
-                </a>
-            </div>
-        </div>
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="files" class="icon-sm"></i> Ingreso de insumos</div>
+        <h1 class="page-title">Formularios SALMI</h1>
+        <p class="page-subtitle">Formularios escaneados y su estado de importación al kardex.</p>
     </div>
+    <div class="page-actions">
+        <a href="/ocr/upload" class="btn btn-primary"><i data-lucide="scan-line"></i> Escanear formulario</a>
+    </div>
+</div>
 
-    ${locals.error ? `
-        <div class="alert alert-danger">${error}</div>
-    ` : ''}
+${locals.success || locals.error ? `
+<div class="flash-stack">
+    ${locals.success ? `<div class="alert alert-success alert-dismissible fade show" role="status"><i data-lucide="circle-check"></i><div>${esc(success)}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>` : ''}
+    ${locals.error ? `<div class="alert alert-danger alert-dismissible fade show" role="alert"><i data-lucide="circle-alert"></i><div>${esc(error)}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>` : ''}
+</div>` : ''}
 
+${porRevisar ? `
+<div class="alert alert-warning mb-3"><i data-lucide="hourglass"></i><div>Tienes <strong>${porRevisar} formulario(s)</strong> esperando revisión. Hasta que los importes, sus insumos no entran al kardex.</div></div>` : ''}
+
+<div class="card table-card">
+    <div class="card-header">
+        <h2 class="card-title"><i data-lucide="file-stack"></i> Mis formularios</h2>
+        ${formularios.length ? `
+        <div class="chip-legend">
+            ${Object.entries(ESTADOS).filter(([k]) => conteo[k]).map(([k, e]) => `<span class="badge badge-soft-${e.tono}"><span class="status-dot"></span> ${conteo[k]} ${e.texto.toLowerCase()}</span>`).join('')}
+        </div>` : ''}
+    </div>
     ${formularios.length === 0 ? `
-        <div class="row">
-            <div class="col-12">
-                <div class="text-center py-5">
-                    <h4 class="text-muted"><i class="bi bi-file-earmark-text"></i> No hay formularios procesados</h4>
-                    <p class="text-muted">Sube tu primer formulario SALMI para empezar</p>
-                    <a href="/ocr/upload" class="btn btn-primary btn-lg">
-                        <i class="bi bi-camera"></i> Escanear formulario
-                    </a>
-                </div>
-            </div>
+        <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="file-scan"></i></div>
+            <h3>Aún no hay formularios</h3>
+            <p>Escanea tu primer formulario SALMI para registrar el ingreso de insumos.</p>
+            <a href="/ocr/upload" class="btn btn-primary"><i data-lucide="scan-line"></i> Escanear formulario</a>
         </div>
     ` : `
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Fecha</th>
-                                        <th>Estado</th>
-                                        <th>Items</th>
-                                        <th>Vista previa</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${formularios.map(formulario => `
-                                        <tr>
-                                            <td>
-                                                <strong>${new Date(formulario.fecha_escaneo).toLocaleDateString('es-BO')}</strong>
-                                                <br>
-                                                <small class="text-muted">
-                                                    ${new Date(formulario.fecha_escaneo).toLocaleTimeString('es-BO')}
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <span class="badge ${
-                                                    formulario.estado_procesamiento === 'completado' ? 'bg-success' : 
-                                                    formulario.estado_procesamiento === 'procesando' ? 'bg-warning' : 
-                                                    formulario.estado_procesamiento === 'error' ? 'bg-danger' : 'bg-secondary'
-                                                }">
-                                                    ${
-                                                        formulario.estado_procesamiento === 'completado' ? '<i class="bi bi-check-circle"></i> Completado' : 
-                                                        formulario.estado_procesamiento === 'procesando' ? '<i class="bi bi-hourglass-split"></i> Procesando' : 
-                                                        formulario.estado_procesamiento === 'error' ? '<i class="bi bi-x-circle"></i> Error' : '<i class="bi bi-pause-circle"></i> Pendiente'
-                                                    }
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-primary">${formulario.total || 0}</span>
-                                                <small class="text-muted">items detectados</small>
-                                            </td>
-                                            <td>
-                                                <img src="${formulario.imagen_path}" alt="Preview" 
-                                                     class="img-thumbnail" style "max-width: 40px; max-height: 40px;">
-                                            </td>
-                                            <td>
-                                                <div class="btn-group btn-group-sm">
-                                                    <a href="/ocr/review/${formulario.id_formulario}" 
-                                                       class="btn btn-outline-primary">
-                                                        <i class="bi bi-eye"></i> Ver
-                                                    </a>
-                                                    ${formulario.estado_procesamiento === 'completado' ? `
-                                                        <button class="btn btn-outline-success" disabled>
-                                                            <i class="bi bi-check-circle"></i> Importar
-                                                        </button>
-                                                    ` : ''}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Formulario</th>
+                        <th>Escaneado</th>
+                        <th>Estado</th>
+                        <th class="text-end">Ítems</th>
+                        <th class="text-end"><span class="visually-hidden">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${formularios.map(f => {
+                        const e = ESTADOS[f.estado] || ESTADOS.pendiente;
+                        const abierto = ['pendiente', 'error'].includes(f.estado);
+                        return `
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <img src="${esc(f.imagen_path)}" alt="" class="doc-thumb" loading="lazy">
+                                    <div>
+                                        <span class="cell-main">${f.nro_formulario ? 'N° ' + esc(f.nro_formulario) : 'Formulario #' + f.id_formulario}</span>
+                                        <span class="cell-sub">${esc(f.tipo_formulario || 'Tipo sin leer')}${f.nro_documento ? ' · D-5 N° ' + esc(f.nro_documento) : ''}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="num">
+                                ${f.fecha_escaneo ? `
+                                <span class="cell-main">${new Date(f.fecha_escaneo).toLocaleDateString('es-BO')}</span>
+                                <span class="cell-sub">${new Date(f.fecha_escaneo).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}</span>` : '—'}
+                            </td>
+                            <td>
+                                <span class="badge badge-soft-${e.tono}"><i data-lucide="${e.icono}"></i> ${e.texto}</span>
+                                ${f.estado === 'cancelado' && f.motivo_cancelacion ? `<span class="cell-sub" title="${esc(f.motivo_cancelacion)}">${esc(f.motivo_cancelacion.length > 40 ? f.motivo_cancelacion.slice(0, 40) + '…' : f.motivo_cancelacion)}</span>` : ''}
+                            </td>
+                            <td class="text-end num">${f.estado === 'importado' ? f.total : f.items_leidos}</td>
+                            <td class="text-end">
+                                <a href="/ocr/review/${f.id_formulario}" class="btn btn-sm ${abierto ? 'btn-outline-primary' : 'btn-light'}">
+                                    ${abierto ? '<i data-lucide="list-checks" class="icon-sm"></i> Revisar' : '<i data-lucide="eye" class="icon-sm"></i> Ver'}
+                                </a>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
         </div>
     `}
 </div>

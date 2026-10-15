@@ -1,5 +1,4 @@
 node_modules/
 .env
 uploads/formularios
-uploads/proyecciones
 *.log

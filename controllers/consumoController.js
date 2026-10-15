@@ -281,28 +281,38 @@ res.status(500).json({ error: 'Error obteniendo detalles del consumo' });
 
 // Mostrar estadísticas
 static showEstadisticas = async (req, res) => {
+const PERIODOS = [7, 30, 90, 365];
+const dias = PERIODOS.includes(parseInt(req.query.dias)) ? parseInt(req.query.dias) : 30;
 try {
+// Fechas en hora local (toISOString usaría UTC y desplazaría el día)
+const isoLocal = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const fechaFin = new Date();
 const fechaInicio = new Date();
-fechaInicio.setMonth(fechaInicio.getMonth() - 1);
+fechaInicio.setDate(fechaInicio.getDate() - dias);
 
-const stats = await Consumo.getStats(
-req.session.userId,
-fechaInicio.toISOString().split('T')[0],
-fechaFin.toISOString().split('T')[0]
-);
+const [stats, porInsumo] = await Promise.all([
+Consumo.getStats(req.session.userId, isoLocal(fechaInicio), isoLocal(fechaFin)),
+Consumo.getConsumoPorInsumo(req.session.userId, isoLocal(fechaInicio), isoLocal(fechaFin))
+]);
 
 res.render('consumos/estadisticas', {
 title: 'Estadísticas de Consumo - Sistema DM-5',
 stats,
-periodo: `${fechaInicio.toLocaleDateString('es-BO')} - ${fechaFin.toLocaleDateString('es-BO')}`
+porInsumo,
+dias,
+periodos: PERIODOS,
+periodo: `${fechaInicio.toLocaleDateString('es-BO')} – ${fechaFin.toLocaleDateString('es-BO')}`
 });
 
 } catch (error) {
 console.error('Error cargando estadísticas:', error);
 res.render('consumos/estadisticas', {
 title: 'Estadísticas de Consumo - Sistema DM-5',
-stats: [],
+stats: null,
+porInsumo: [],
+dias,
+periodos: PERIODOS,
+periodo: '',
 error: 'Error cargando estadísticas'
 });
 }

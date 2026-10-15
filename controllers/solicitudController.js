@@ -68,7 +68,7 @@ class SolicitudController {
       const detallesFormateados = detalles.map(d => ({
         id_insumo: parseInt(d.id_insumo),
         cantidad: parseInt(d.cantidad),
-        costo_total: parseInt(d.costo_total)
+        costo_total: parseFloat(d.costo_total)
       }));
 
       await Solicitud.crear(req.session.userId, detallesFormateados);
@@ -169,7 +169,7 @@ class SolicitudController {
       const detallesFormateados = detalles.map(d => ({
         id_insumo: parseInt(d.id_insumo),
         cantidad: parseInt(d.cantidad),
-        costo_total: parseInt(d.costo_total)
+        costo_total: parseFloat(d.costo_total)
       }));
 
       await Solicitud.actualizar(parseInt(id), detallesFormateados);

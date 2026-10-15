@@ -64,14 +64,14 @@ class Dashboard {
   static async getEstadisticasGenerales() {
     try {
       // Consulta optimizada y 100% segura
-      const result = await pool.query(`SELECT (SELECT COUNT(*) FROM insumos) AS total_insumos, (SELECT COUNT(DISTINCT id_insumo) FROM lotes WHERE aplicaciones_disponibles > 0 AND fecha_vencimiento >= CURRENT_DATE AND (vencimiento_notificado IS NULL OR vencimiento_notificado = FALSE)) AS en_stock, (SELECT COUNT(*) FROM alertas WHERE leida = FALSE) AS alertas, (SELECT COUNT(*) FROM proyecciones_dental WHERE DATE(fecha_generacion) = CURRENT_DATE) AS proyecciones_hoy, (SELECT COALESCE(SUM(dk.salidas), 0) FROM detalle_kardex dk JOIN kardex k ON dk.id_kardex = k.id_kardex WHERE k.abierto = TRUE AND DATE_TRUNC('month', dk.fecha) = DATE_TRUNC('month', CURRENT_DATE)) AS consumo_mes`);
+      const result = await pool.query(`SELECT (SELECT COUNT(*) FROM insumos) AS total_insumos, (SELECT COUNT(DISTINCT id_insumo) FROM lotes WHERE aplicaciones_disponibles > 0 AND fecha_vencimiento >= CURRENT_DATE AND (vencimiento_notificado IS NULL OR vencimiento_notificado = FALSE)) AS en_stock, (SELECT COUNT(*) FROM alertas WHERE leida = FALSE) AS alertas, (SELECT COALESCE(SUM(dk.salidas), 0) FROM detalle_kardex dk JOIN kardex k ON dk.id_kardex = k.id_kardex WHERE k.abierto = TRUE AND DATE_TRUNC('month', dk.fecha) = DATE_TRUNC('month', CURRENT_DATE)) AS consumo_mes`);
 
       // Debug: imprime exactamente lo que devuelve PostgreSQL
       console.log('Raw result from DB:', result.rows);
 
       if (!result.rows || result.rows.length === 0) {
         console.warn('No rows returned from stats query');
-        return { total_insumos: 0, en_stock: 0, alertas: 0, proyecciones_hoy: 0, consumo_mes: 0 };
+        return { total_insumos: 0, en_stock: 0, alertas: 0, consumo_mes: 0 };
       }
 
       const row = result.rows[0];
@@ -81,12 +81,11 @@ class Dashboard {
         total_insumos: parseInt(row.total_insumos, 10) || 0,
         en_stock: parseInt(row.en_stock, 10) || 0,
         alertas: parseInt(row.alertas, 10) || 0,
-        proyecciones_hoy: parseInt(row.proyecciones_hoy, 10) || 0,
         consumo_mes: parseInt(row.consumo_mes, 10) || 0
       };
     } catch (error) {
       console.error('Error crítico en getEstadisticasGenerales:', error);
-      return { total_insumos: 0, en_stock: 0, alertas: 0, proyecciones_hoy: 0, consumo_mes: 0 };
+      return { total_insumos: 0, en_stock: 0, alertas: 0, consumo_mes: 0 };
     }
   }
 }

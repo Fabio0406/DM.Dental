@@ -20,6 +20,7 @@ const redirectIfAuth = (req, res, next) => {
 const addUserToViews = (req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.isAuthenticated = !!req.session.userId;
+  res.locals.currentPath = req.path;
   next();
 };
 

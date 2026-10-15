@@ -19,6 +19,18 @@ router.post('/upload', uploadFormulario.single('formulario'), OCRController.proc
 // GET /ocr/review/:id - Revisar datos extraídos
 router.get('/review/:id', OCRController.showReview);
 
+// GET /ocr/estado/:id - Estado de la lectura (consulta periódica)
+router.get('/estado/:id', OCRController.estado);
+
+// POST /ocr/guardar/:id - Guardar la revisión como borrador
+router.post('/guardar/:id', OCRController.guardarBorrador);
+
+// POST /ocr/releer/:id - Volver a leer la imagen
+router.post('/releer/:id', OCRController.releer);
+
+// POST /ocr/cancelar/:id - Cancelar la importación (solo antes de importar)
+router.post('/cancelar/:id', OCRController.cancelar);
+
 // POST /ocr/confirmar/:id - Confirmar e importar al inventario
 router.post('/confirmar/:id', OCRController.confirmarImportar);
 

@@ -1,67 +1,112 @@
-// 1. Importaciones de módulos externos y nativos (Convertidas a ESM)
-import Tesseract from 'tesseract.js';
-import sharp from 'sharp';
 import path from 'path';
-import fs from 'fs'; // fs normal para existsSync, unlinkSync
-import { promises as fsPromises } from 'fs'; // fs.promises para operaciones async
-// CORRECCIÓN: Importar y definir __dirname para ESM
 import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename); // Usamos import * as fs para usar fs.existsSync, fs.unlinkSync, etc.
 
-// 2. Importaciones de modelos locales (Convertidas a ESM y añadido .js)
 import Formulario from '../models/Formulario.js';
 import Insumo from '../models/Insumo.js';
-import Kardex from '../models/Kardex.js';
-
-// 3. Importación del Pool de Base de Datos (Convertida y movida al inicio)
 import { pool } from '../config/database.js';
+import { leerFormulario } from '../services/salmiParser.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PUBLIC_DIR = path.join(__dirname, '../public');
+
+const redondear = (v, dec = 2) => Math.round(v * 10 ** dec) / 10 ** dec;
+const texto = (v) => (v === undefined || v === null ? '' : String(v).trim());
+const numero = (v) => {
+  const n = parseFloat(String(v ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+const entero = (v) => {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+};
+const hoyISO = () => {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+// Lee el formulario en segundo plano y guarda el resultado
+function iniciarLectura(idFormulario, imagenPath) {
+  const ruta = path.join(PUBLIC_DIR, imagenPath);
+  leerFormulario(ruta)
+    .then(resultado => Formulario.guardarLectura(idFormulario, resultado))
+    .then(() => console.log(`📄 Formulario ${idFormulario} leído`))
+    .catch(async error => {
+      console.error(`❌ Error leyendo formulario ${idFormulario}:`, error);
+      await Formulario.marcarError(idFormulario, 'No se pudo leer la imagen: ' + error.message).catch(() => {});
+    });
+}
+
+// Encabezado e ítems enviados desde la pantalla de revisión
+function leerRevision(body) {
+  const encabezado = {
+    tipo_formulario: texto(body.tipo_formulario),
+    nro_formulario: texto(body.nro_formulario),
+    nro_documento: texto(body.nro_documento),
+    fecha_elaboracion: texto(body.fecha_elaboracion),
+    sede: texto(body.sede),
+    establecimiento: texto(body.establecimiento),
+    botiquin: texto(body.botiquin),
+    responsable: texto(body.responsable),
+    representante: texto(body.representante),
+    elaborado_por: texto(body.elaborado_por),
+    observaciones: texto(body.observaciones),
+    total_formulario: numero(body.total_formulario)
+  };
+
+  // items[i][campo]: con muchos índices el parser entrega un objeto, no un arreglo
+  const filas = Object.values(body.items || {}).filter(f => f && typeof f === 'object');
+  const items = filas.map(f => {
+    const cantidad = entero(f.cantidad);
+    const costo = numero(f.costo_unitario);
+    return {
+      id_insumo: /^\d+$/.test(texto(f.id_insumo)) ? parseInt(f.id_insumo, 10) : null,
+      codigo: texto(f.codigo).toUpperCase(),
+      nombre_generico: texto(f.nombre_generico),
+      forma_farmaceutica: texto(f.forma_farmaceutica),
+      concentracion: texto(f.concentracion),
+      numero_lote: texto(f.numero_lote),
+      fecha_vencimiento: texto(f.fecha_vencimiento),
+      cantidad,
+      costo_unitario: costo,
+      costo_total: cantidad && costo !== null ? redondear(cantidad * costo) : null,
+      confianza: numero(f.confianza),
+      dudoso: f.dudoso === 'true',
+      observacion: texto(f.observacion),
+      // Solo para insumos nuevos
+      nuevo: {
+        id_categoria: entero(f.nuevo_categoria),
+        rendimiento: entero(f.nuevo_rendimiento),
+        minimo: entero(f.nuevo_minimo)
+      }
+    };
+  });
+  return { encabezado, items };
+}
 
 class OCRController {
-  // Mostrar página de upload
+  // GET /ocr/upload
   static showUpload = (req, res) => {
     const error = req.session.error || null;
     const success = req.session.success || null;
     req.session.error = null;
     req.session.success = null;
-
-    res.render('ocr/upload', {
-      title: 'Escanear Formulario SALMI - Sistema DM-5',
-      error,
-      success
-    });
+    res.render('ocr/upload', { title: 'Escanear Formulario SALMI - Sistema DM-5', error, success });
   };
 
-  // Procesar upload y OCR
+  // POST /ocr/upload
   static processUpload = async (req, res) => {
     try {
       if (!req.file) {
         req.session.error = 'No se seleccionó ningún archivo';
         return res.redirect('/ocr/upload');
       }
-
-      console.log('📄 Procesando archivo:', req.file.filename);
-
-      // Crear registro del formulario
       const formulario = await Formulario.create({
-        nro_formulario: 98,
-        fecha_elaboracion: null,
         imagen_path: `/uploads/formularios/${req.file.filename}`,
-        representante: req.session.userId
+        id_usuario: req.session.userId
       });
-
-      console.log('✅ Formulario creado ID:', formulario.id_formulario);
-
-      // Actualizar estado a procesando
-      await Formulario.updateStatus(formulario.id_formulario, false);
-
-      // Procesar imagen en background
-      OCRController.processImageOCR(formulario.id_formulario, req.file.path);
-
+      iniciarLectura(formulario.id_formulario, formulario.imagen_path);
       res.redirect(`/ocr/review/${formulario.id_formulario}`);
-      req.session.success = 'Formulario subido correctamente. Procesando con IA...';
-
     } catch (error) {
       console.error('Error procesando upload:', error);
       req.session.error = 'Error procesando archivo: ' + error.message;
@@ -69,321 +114,277 @@ class OCRController {
     }
   };
 
-  // Procesar OCR en background
-  static processImageOCR = async (formularioId, imagePath) => {
-    try {
-      console.log('🔍 Iniciando OCR para formulario:', formularioId);
-
-      // Preprocesar imagen con Sharp
-      const processedImagePath = imagePath.replace(path.extname(imagePath), '_processed' + path.extname(imagePath));
-
-      await sharp(imagePath)
-        .greyscale()
-        .normalize()
-        .sharpen()
-        .png()
-        .toFile(processedImagePath);
-
-      // Ejecutar OCR con Tesseract
-      const { data: { text } } = await Tesseract.recognize(processedImagePath, 'spa', {
-        logger: m => console.log('OCR:', m.status, m.progress)
-      });
-
-      console.log('📝 Texto extraído:', text.substring(0, 200) + '...');
-
-      // Procesar y extraer datos del texto
-      const datosExtraidos = await OCRController.extractFormularioData(text);
-
-      // Actualizar datos del formulario
-      if (datosExtraidos.numero_formulario || datosExtraidos.fecha_documento) {
-        await Formulario.updateDatos(formularioId, {
-          numero_formulario: datosExtraidos.numero_formulario || '98',
-          fecha_documento: datosExtraidos.fecha_documento || new Date().toISOString().split('T')[0],
-          responsable_nombre: datosExtraidos.responsable_nombre || 'Sin especificar'
-        });
-      }
-
-      // Limpiar archivo procesado temporal
-      if (fs.existsSync(processedImagePath)) {
-        fs.unlinkSync(processedImagePath);
-      }
-
-      console.log('✅ OCR completado para formulario:', formularioId);
-
-    } catch (error) {
-      console.error('❌ Error en OCR:', error);
-      await Formulario.updateStatus(formularioId, false);
-    }
+  // GET /ocr/estado/:id  (consulta periódica mientras se lee)
+  static estado = async (req, res) => {
+    const formulario = await Formulario.findById(parseInt(req.params.id));
+    if (!formulario) return res.status(404).json({ error: 'Formulario no encontrado' });
+    res.json({ estado: formulario.estado, error: formulario.error_ocr });
   };
 
-  // Extraer datos (método comentado - dejar como está)
-  static extractFormularioData = async (text) => {
-    return {
-      numero_formulario: null,
-      fecha_documento: null,
-      items: []
-    };
-  };
-
-  // Mostrar revisión de datos (DATOS HARDCODEADOS)
+  // GET /ocr/review/:id
   static showReview = async (req, res) => {
     try {
-      const formulario = await Formulario.findById(req.params.id);
-
+      const id = parseInt(req.params.id);
+      const formulario = await Formulario.findById(id);
       if (!formulario) {
         req.session.error = 'Formulario no encontrado';
-        return res.redirect('/ocr/upload');
+        return res.redirect('/ocr');
       }
 
-      // Datos hardcodeados para demostración
-      const detalles = [
-        { codigo: 'N0111', nombre: 'Lidocaina con epinefrina', cantidad: 40, lote: '1401G23057', vencimiento: '2027-03-31', costo: 100.00, id_insumo: 1, forma_farmaceutica: 'Cartucho dental', concentracion: '2% + 1:200000', presentacion: 'Caja x 50 cartuchos', unidad_medida: 'Cartucho', rendimiento_teorico: 1, aplicaciones_minimas: 10, id_categoria: 1 },
-        { codigo: 'IA117', nombre: 'Aguja larga para carpule', cantidad: 30, lote: '202309', vencimiento: '2028-09-30', costo: 55.00, id_insumo: 2, forma_farmaceutica: 'Pieza', concentracion: '27G x 35mm', presentacion: 'Caja x 100', unidad_medida: 'Unidad', rendimiento_teorico: 1, aplicaciones_minimas: 20, id_categoria: 1 },
-        { codigo: 'IC036', nombre: 'Cinta testigo humedo', cantidad: 60, lote: 'SUS', vencimiento: '2030-12-31', costo: 90.00, id_insumo: 3, forma_farmaceutica: 'Pieza', concentracion: 'N/A', presentacion: 'Caja x 200', unidad_medida: 'Unidad', rendimiento_teorico: 1, aplicaciones_minimas: 20, id_categoria: 6 },
-        { codigo: 'IE018', nombre: 'Esponja hemostatica 10 x 10 cm', cantidad: 40, lote: '918423', vencimiento: '2026-01-31', costo: 130.00, id_insumo: 4, forma_farmaceutica: 'Pieza', concentracion: 'Gelatina absorbible', presentacion: 'Caja x 10', unidad_medida: 'Unidad', rendimiento_teorico: 1, aplicaciones_minimas: 10, id_categoria: 1 },
-        { codigo: 'II001', nombre: 'Ionomero de vidrio de obturacion', cantidad: 30, lote: '2312221', vencimiento: '2028-12-31', costo: 220.00, id_insumo: 5, forma_farmaceutica: 'Polvo/Líquido', concentracion: '12.5 g', presentacion: 'Frasco 12.5g', unidad_medida: 'Frasco', rendimiento_teorico: 58, aplicaciones_minimas: 10, id_categoria: 2 },
-        { codigo: 'IO002', nombre: 'Oxido de zinc', cantidad: 1, lote: 'OXD0565', vencimiento: '2025-11-30', costo: 30.00, id_insumo: 6, forma_farmaceutica: 'Polvo', concentracion: '50 g', presentacion: 'Sobre 50g', unidad_medida: 'Sobre', rendimiento_teorico: 110, aplicaciones_minimas: 20, id_categoria: 2 },
-        { codigo: 'IS005', nombre: 'Sellador de fosas y fisuras', cantidad: 70, lote: '190424', vencimiento: '2026-04-30', costo: 90.00, id_insumo: 7, forma_farmaceutica: 'Pasta', concentracion: '5 g', presentacion: 'Frasco 5g', unidad_medida: 'Frasco', rendimiento_teorico: 70, aplicaciones_minimas: 10, id_categoria: 3 },
-        { codigo: 'OM42', nombre: 'Acido destilada 10 litros', cantidad: 20, lote: 'LB', vencimiento: '2028-07-31', costo: 45.00, id_insumo: 8, forma_farmaceutica: 'Líquido', concentracion: '10 L', presentacion: 'Galón 10L', unidad_medida: 'Galón', rendimiento_teorico: 1, aplicaciones_minimas: 1, id_categoria: 7 },
-        { codigo: 'OM19', nombre: 'Anestesico topico gel', cantidad: 60, lote: '2306T0054', vencimiento: '2025-05-30', costo: 30.00, id_insumo: 9, forma_farmaceutica: 'Gel', concentracion: '12 g', presentacion: 'Frasco 12g', unidad_medida: 'Frasco', rendimiento_teorico: 50, aplicaciones_minimas: 10, id_categoria: 1 },
-        { codigo: 'OM45', nombre: 'Eugenol', cantidad: 70, lote: '200301', vencimiento: '2025-12-31', costo: 180.00, id_insumo: 10, forma_farmaceutica: 'Líquido', concentracion: '20 ml', presentacion: 'Frasco 20ml', unidad_medida: 'Frasco', rendimiento_teorico: 110, aplicaciones_minimas: 20, id_categoria: 2 },
-        { codigo: 'OM22', nombre: 'Lidocaina clorhidrato sin epinefrina', cantidad: 70, lote: '2209A-1013-MEPIV', vencimiento: '2025-09-30', costo: 180.00, id_insumo: 11, forma_farmaceutica: 'Cartucho dental', concentracion: '3%', presentacion: 'Caja x 50', unidad_medida: 'Cartucho', rendimiento_teorico: 1, aplicaciones_minimas: 10, id_categoria: 1 },
-        { codigo: 'OM37', nombre: 'Pasta diamantada', cantidad: 90, lote: '12427', vencimiento: '2025-06-30', costo: 70.00, id_insumo: 12, forma_farmaceutica: 'Pasta', concentracion: '2 g', presentacion: 'Tubo 2g', unidad_medida: 'Tubo', rendimiento_teorico: 50, aplicaciones_minimas: 10, id_categoria: 2 },
-        { codigo: 'OM21', nombre: 'Removedor de manchas', cantidad: 70, lote: '021123', vencimiento: '2026-11-30', costo: 220.00, id_insumo: 13, forma_farmaceutica: 'Líquido', concentracion: '30 ml', presentacion: 'Frasco 30ml', unidad_medida: 'Frasco', rendimiento_teorico: 28, aplicaciones_minimas: 5, id_categoria: 3 },
-        { codigo: 'OM11', nombre: 'Resina fotopolimerizable A1', cantidad: 20, lote: '301123', vencimiento: '2026-11-30', costo: 220.00, id_insumo: 14, forma_farmaceutica: 'Pasta', concentracion: '3.5 g', presentacion: 'Tubo 3.5g', unidad_medida: 'Tubo', rendimiento_teorico: 23, aplicaciones_minimas: 5, id_categoria: 2 },
-        { codigo: 'OM12', nombre: 'Resina fotopolimerizable A2', cantidad: 10, lote: 'L0005D822', vencimiento: '2027-08-31', costo: 90.00, id_insumo: 15, forma_farmaceutica: 'Pasta', concentracion: '3.5 g', presentacion: 'Tubo 3.5g', unidad_medida: 'Tubo', rendimiento_teorico: 23, aplicaciones_minimas: 5, id_categoria: 2 },
-        { codigo: 'OI23', nombre: 'Aceite para limpiar turbinas', cantidad: 10, lote: '90124', vencimiento: '2027-08-31', costo: 188.00, id_insumo: 16, forma_farmaceutica: 'Líquido', concentracion: '200 ml', presentacion: 'Frasco 200ml', unidad_medida: 'Frasco', rendimiento_teorico: 50, aplicaciones_minimas: 10, id_categoria: 7 },
-        { codigo: 'OI19', nombre: 'Adhesivo dental', cantidad: 10, lote: '290023', vencimiento: '2025-08-31', costo: 46.00, id_insumo: 17, forma_farmaceutica: 'Líquido', concentracion: '5 ml', presentacion: 'Frasco 5ml', unidad_medida: 'Frasco', rendimiento_teorico: 55, aplicaciones_minimas: 10, id_categoria: 2 },
-        { codigo: 'OI28', nombre: 'Cariostatic', cantidad: 10, lote: '22110530', vencimiento: '2026-08-31', costo: 48.00, id_insumo: 18, forma_farmaceutica: 'Solución', concentracion: '7 ml', presentacion: 'Frasco 7ml', unidad_medida: 'Frasco', rendimiento_teorico: 100, aplicaciones_minimas: 20, id_categoria: 3 },
-        { codigo: 'OI31', nombre: 'Suctor de saliva x 100 unidades', cantidad: 10, lote: 'NO APLICA', vencimiento: '2027-10-31', costo: 42.00, id_insumo: 19, forma_farmaceutica: 'Bolsa', concentracion: '100 und', presentacion: 'Bolsa x 100', unidad_medida: 'Bolsa', rendimiento_teorico: 100, aplicaciones_minimas: 20, id_categoria: 7 },
-        { codigo: 'OI90', nombre: 'Tipo descartable campo', cantidad: 10, lote: '28223', vencimiento: '2028-04-30', costo: 48.00, id_insumo: 20, forma_farmaceutica: 'Paquete', concentracion: '100 und', presentacion: 'Paquete x 100', unidad_medida: 'Paquete', rendimiento_teorico: 100, aplicaciones_minimas: 20, id_categoria: 6 }
-      ];
+      const flash = { success: req.session.success || null, error: req.session.error || null };
+      req.session.success = null;
+      req.session.error = null;
+
+      const detalles = await Formulario.getDetalles(id);
+      const [insumos, categorias, duplicados] = await Promise.all([
+        Insumo.findAll(),
+        pool.query('SELECT id_categoria_insumo, nombre FROM categorias_insumo ORDER BY nombre').then(r => r.rows),
+        formulario.estado === 'pendiente' ? Formulario.buscarPosiblesDuplicados(formulario) : []
+      ]);
+
+      // Lotes que ya existen en el inventario (mismo código y número de lote)
+      const lotesExistentes = new Set();
+      if (detalles.length) {
+        const r = await pool.query(
+          `SELECT UPPER(i.codigo) AS codigo, UPPER(l.numero_lote) AS lote
+           FROM lotes l JOIN insumos i ON i.id_insumo = l.id_insumo
+           WHERE UPPER(i.codigo) = ANY($1)`,
+          [detalles.map(d => String(d.codigo || '').toUpperCase())]
+        );
+        r.rows.forEach(row => lotesExistentes.add(`${row.codigo}|${row.lote}`));
+      }
+
+      const porCodigo = new Map(insumos.map(i => [String(i.codigo).toUpperCase(), i]));
+      const hoy = hoyISO();
+      const items = detalles.map(d => {
+        const codigo = String(d.codigo || '').toUpperCase();
+        const vence = d.fecha_vencimiento ? new Date(d.fecha_vencimiento) : null;
+        const venceISO = vence ? `${vence.getFullYear()}-${String(vence.getMonth() + 1).padStart(2, '0')}-${String(vence.getDate()).padStart(2, '0')}` : '';
+        return {
+          ...d,
+          fecha_vencimiento: venceISO,
+          insumo_catalogo: d.id_insumo ? insumos.find(i => i.id_insumo === d.id_insumo) : porCodigo.get(codigo) || null,
+          vencido: venceISO && venceISO < hoy,
+          duplicado: lotesExistentes.has(`${codigo}|${String(d.numero_lote || '').toUpperCase()}`)
+        };
+      });
+
+      let avisos = [];
+      try { avisos = formulario.avisos_ocr ? JSON.parse(formulario.avisos_ocr) : []; } catch (e) { avisos = []; }
 
       res.render('ocr/review', {
-        title: 'Revisar Datos Extraídos - Sistema DM-5',
+        title: 'Revisar Formulario SALMI - Sistema DM-5',
         formulario,
-        detalles
+        items,
+        insumos,
+        categorias,
+        duplicados,
+        avisos,
+        ...flash
       });
-
     } catch (error) {
       console.error('Error mostrando revisión:', error);
-      req.session.error = 'Error cargando datos';
-      res.redirect('/ocr/upload');
+      req.session.error = 'Error cargando el formulario';
+      res.redirect('/ocr');
     }
   };
 
-  // Listar formularios del usuario
+  // GET /ocr
   static listFormularios = async (req, res) => {
     try {
-      const formularios = await Formulario.findByUser(req.session.userId, 20);
-      console.log('📋 Formularios encontrados:', formularios);
-      res.render('ocr/list', {
-        title: 'Formularios SALMI - Sistema DM-5',
-        formularios
-      });
-
+      const formularios = await Formulario.findByUser(req.session.userId, 50);
+      const flash = { success: req.session.success || null, error: req.session.error || null };
+      req.session.success = null;
+      req.session.error = null;
+      res.render('ocr/list', { title: 'Formularios SALMI - Sistema DM-5', formularios, ...flash });
     } catch (error) {
       console.error('Error listando formularios:', error);
-      res.render('ocr/list', {
-        title: 'Formularios SALMI - Sistema DM-5',
-        formularios: [],
-        error: 'Error cargando formularios'
-      });
+      res.render('ocr/list', { title: 'Formularios SALMI - Sistema DM-5', formularios: [], error: 'Error cargando formularios' });
     }
   };
 
-  // CORREGIDO: Confirmar e importar al inventario
+  // POST /ocr/guardar/:id  (borrador de la revisión)
+  static guardarBorrador = async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+      const { encabezado, items } = leerRevision(req.body);
+      const ok = await Formulario.guardarRevision(id, encabezado, items);
+      req.session[ok ? 'success' : 'error'] = ok ? 'Cambios guardados. Puedes continuar la revisión cuando quieras.' : 'Este formulario ya no se puede modificar.';
+    } catch (error) {
+      console.error('Error guardando borrador:', error);
+      req.session.error = 'No se pudieron guardar los cambios: ' + error.message;
+    }
+    res.redirect(`/ocr/review/${id}`);
+  };
+
+  // POST /ocr/releer/:id
+  static releer = async (req, res) => {
+    const id = parseInt(req.params.id);
+    const formulario = await Formulario.marcarProcesando(id);
+    if (!formulario) {
+      req.session.error = 'Este formulario ya no se puede volver a leer.';
+    } else {
+      iniciarLectura(id, formulario.imagen_path);
+    }
+    res.redirect(`/ocr/review/${id}`);
+  };
+
+  // POST /ocr/cancelar/:id
+  static cancelar = async (req, res) => {
+    const id = parseInt(req.params.id);
+    const motivo = texto(req.body.motivo);
+    if (motivo.length < 3) {
+      req.session.error = 'Indica el motivo de la cancelación.';
+      return res.redirect(`/ocr/review/${id}`);
+    }
+    const formulario = await Formulario.cancelar(id, req.session.userId, motivo);
+    if (!formulario) {
+      req.session.error = 'Solo se puede cancelar un formulario que aún no fue importado.';
+      return res.redirect(`/ocr/review/${id}`);
+    }
+    req.session.success = `Importación del formulario ${formulario.nro_formulario ? 'N° ' + formulario.nro_formulario : '#' + id} cancelada. El inventario no se modificó.`;
+    res.redirect('/ocr');
+  };
+
+  // POST /ocr/confirmar/:id
   static confirmarImportar = async (req, res) => {
-    const client = await pool.connect(); // ⬅️ IMPORTACIÓN CORREGIDA
+    const id = parseInt(req.params.id);
+    const { encabezado, items } = leerRevision(req.body);
+
+    // Lo revisado se guarda primero: si la importación falla no se pierden los cambios
+    try {
+      await Formulario.guardarRevision(id, encabezado, items);
+    } catch (error) {
+      console.error('Error guardando revisión:', error);
+    }
+
+    const errores = [];
+    if (!items.length) errores.push('El formulario no tiene ítems.');
+    items.forEach((it, i) => {
+      const fila = `Fila ${i + 1}`;
+      if (!it.codigo) errores.push(`${fila}: falta el código.`);
+      if (!it.nombre_generico) errores.push(`${fila}: falta el nombre.`);
+      if (!it.numero_lote) errores.push(`${fila}: falta el lote.`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(it.fecha_vencimiento)) errores.push(`${fila}: fecha de vencimiento inválida.`);
+      if (!it.cantidad || it.cantidad <= 0) errores.push(`${fila}: cantidad inválida.`);
+      if (it.costo_unitario === null || it.costo_unitario <= 0) errores.push(`${fila}: costo unitario inválido.`);
+    });
+    if (errores.length) {
+      req.session.error = 'No se importó. ' + errores.slice(0, 5).join(' ') + (errores.length > 5 ? ` (+${errores.length - 5} más)` : '');
+      return res.redirect(`/ocr/review/${id}`);
+    }
+
+    const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      const formularioId = parseInt(req.params.id);
-      const totalItems = parseInt(req.body.total_items) || 0;
-      const sede = req.body.sede || req.session.sede || 'CENTRAL'; // ← CLAVE: sede obligatorio
-
-      if (!formularioId || totalItems <= 0) {
-        throw new Error('ID de formulario o total_items inválido');
+      const actual = await client.query('SELECT * FROM formularios_salmi WHERE id_formulario = $1 FOR UPDATE', [id]);
+      const formulario = actual.rows[0];
+      if (!formulario) throw new Error('Formulario no encontrado');
+      if (formulario.estado !== 'pendiente' && formulario.estado !== 'error') {
+        throw new Error(formulario.estado === 'importado' ? 'Este formulario ya fue importado.' : 'Este formulario fue cancelado.');
       }
 
-      if (!sede) {
-        throw new Error('No se especificó la sede (campo obligatorio)');
-      }
+      const gestion = new Date().getFullYear();
+      const claveDoc = encabezado.nro_formulario
+        ? `SALMI N° ${encabezado.nro_formulario}`
+        : encabezado.nro_documento ? `D-5 N° ${encabezado.nro_documento}` : `SALMI #${id}`;
 
-      console.log('Importando formulario:', formularioId);
-      console.log('Sede:', sede);
-      console.log('Total items a procesar:', totalItems);
-
-      let itemsProcesados = 0;
-
-      for (let i = 0; i < totalItems; i++) {
-        const codigo = (req.body[`codigo_${i}`] || '').trim();
-        const nombre = (req.body[`nombre_${i}`] || '').trim();
-        const cantidad = parseInt(req.body[`cantidad_${i}`]) || 0;
-        const lote = (req.body[`lote_${i}`] || '').trim();
-        const vencimiento = req.body[`vencimiento_${i}`];
-        const costoUnitarioInsumo = parseFloat(req.body[`costo_${i}`]) || 0;
-        let idInsumo = parseInt(req.body[`id_insumo_${i}`]) || null;
-
-        if (!codigo || !nombre || cantidad <= 0 || !lote || !vencimiento || costoUnitarioInsumo <= 0) {
-          console.log(`Saltando item ${i}: datos incompletos`, { codigo, cantidad, vencimiento, costoUnitarioInsumo });
-          continue;
+      for (const [i, it] of items.entries()) {
+        // 1. Insumo: el elegido en la revisión, el del mismo código, o uno nuevo
+        let insumo = null;
+        if (it.id_insumo) {
+          insumo = (await client.query('SELECT * FROM insumos WHERE id_insumo = $1', [it.id_insumo])).rows[0];
         }
-
-        // PASO 1: Obtener o crear insumo
-        if (!idInsumo) {
-          const buscar = await client.query(
-            'SELECT id_insumo, rendimiento_teorico FROM insumos WHERE codigo = $1',
-            [codigo]
-          );
-
-          if (buscar.rows.length > 0) {
-            idInsumo = buscar.rows[0].id_insumo;
-          } else {
-            const nuevo = await client.query(
-              `INSERT INTO insumos 
-(codigo, nombre_generico, forma_farmaceutica, concentracion, presentacion, 
- unidad_medida, rendimiento_teorico, aplicaciones_minimas, costo_unitario, id_categoria)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id_insumo`,
-              [
-                codigo,
-                nombre,
-                'Por definir',
-                'N/A',
-                'Por definir',
-                'Unidad',
-                1,
-                5,
-                Math.round(costoUnitarioInsumo),
-                1
-              ]
-            );
-            idInsumo = nuevo.rows[0].id_insumo;
+        if (!insumo) {
+          insumo = (await client.query('SELECT * FROM insumos WHERE UPPER(codigo) = $1', [it.codigo])).rows[0];
+        }
+        if (!insumo) {
+          if (!it.nuevo.id_categoria || !it.nuevo.rendimiento || it.nuevo.rendimiento < 1) {
+            throw new Error(`Fila ${i + 1}: para el insumo nuevo ${it.codigo} indica categoría y aplicaciones por unidad.`);
           }
+          insumo = (await client.query(
+            `INSERT INTO insumos (codigo, nombre_generico, forma_farmaceutica, concentracion, presentacion,
+                                  unidad_medida, aplicaciones_minimas, rendimiento_teorico, costo_unitario, id_categoria)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+            [it.codigo, it.nombre_generico, it.forma_farmaceutica || null, it.concentracion || null,
+             it.forma_farmaceutica || null, it.concentracion || null, it.nuevo.minimo ?? 10,
+             it.nuevo.rendimiento, it.costo_unitario, it.nuevo.id_categoria]
+          )).rows[0];
         }
 
-        // Obtener rendimiento y costo del insumo
-        const { rows: [insumo] } = await client.query(
-          'SELECT rendimiento_teorico, costo_unitario FROM insumos WHERE id_insumo = $1',
-          [idInsumo]
-        );
-
+        // 2. Aplicaciones y costos (costo del formulario, con decimales)
         const rendimiento = insumo.rendimiento_teorico || 1;
-        const costoUnitarioFisico = insumo.costo_unitario || costoUnitarioInsumo;
+        const aplicaciones = it.cantidad * rendimiento;
+        const costoTotal = redondear(it.cantidad * it.costo_unitario);
+        const costoPorAplicacion = redondear(costoTotal / aplicaciones);
 
-        const aplicacionesTotal = cantidad * rendimiento;
-        const costoTotal = Math.round(costoUnitarioFisico * cantidad);
-        const costoPorAplicacion = aplicacionesTotal > 0 ? Math.round(costoTotal / aplicacionesTotal) : 0;
-
-        // PASO 2: Kardex activo
-        const gestionActual = new Date().getFullYear();
-        let idKardex;
-
-        const kardexCheck = await client.query(
-          'SELECT id_kardex FROM kardex WHERE id_insumo = $1 AND gestion = $2 AND abierto = TRUE',
-          [idInsumo, gestionActual]
-        );
-
-        if (kardexCheck.rows.length === 0) {
-          const nuevoKardex = await client.query(
-            `INSERT INTO kardex 
-(id_insumo, numero_kardex, gestion, ubicacion, abierto, fecha_apertura)
-VALUES ($1, (SELECT COALESCE(MAX(numero_kardex), 0) + 1 FROM kardex WHERE id_insumo = $1), $2, $3, TRUE, CURRENT_TIMESTAMP)
-RETURNING id_kardex`,
-            [idInsumo, gestionActual, 'Almacén Principal']
-          );
-          idKardex = nuevoKardex.rows[0].id_kardex;
-        } else {
-          idKardex = kardexCheck.rows[0].id_kardex;
+        // 3. Kardex abierto de la gestión
+        let kardex = (await client.query(
+          'SELECT id_kardex FROM kardex WHERE id_insumo = $1 AND gestion = $2 AND abierto = TRUE ORDER BY id_kardex DESC LIMIT 1',
+          [insumo.id_insumo, gestion]
+        )).rows[0];
+        if (!kardex) {
+          kardex = (await client.query(
+            `INSERT INTO kardex (id_insumo, numero_kardex, gestion, ubicacion, abierto, fecha_apertura)
+             VALUES ($1, (SELECT COALESCE(MAX(numero_kardex), 0) + 1 FROM kardex WHERE id_insumo = $1), $2, $3, TRUE, CURRENT_TIMESTAMP)
+             RETURNING id_kardex`,
+            [insumo.id_insumo, gestion, encabezado.botiquin || 'Almacén Principal']
+          )).rows[0];
         }
 
-        // PASO 3: Crear lote
-        const loteInsert = await client.query(
-          `INSERT INTO lotes 
-(id_insumo, id_formulario, numero_lote, fecha_vencimiento, 
-cantidad_insumos, aplicaciones_disponibles, costo_total)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id_lote`,
-          [
-            idInsumo,
-            formularioId,
-            lote,
-            vencimiento,
-            cantidad,
-            aplicacionesTotal,
-            costoTotal
-          ]
-        );
-        const idLote = loteInsert.rows[0].id_lote;
+        // 4. Lote
+        const lote = (await client.query(
+          `INSERT INTO lotes (id_insumo, id_formulario, numero_lote, fecha_vencimiento, cantidad_insumos,
+                              aplicaciones_disponibles, costo_total, id_usuario)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id_lote`,
+          [insumo.id_insumo, id, it.numero_lote, it.fecha_vencimiento, it.cantidad, aplicaciones, costoTotal, req.session.userId]
+        )).rows[0];
 
-        // PASO 4: Saldos
-        const saldoAnterior = await client.query(
-          `SELECT COALESCE(SUM(aplicaciones_disponibles), 0) as total 
-FROM lotes 
-WHERE id_insumo = $1 AND id_lote != $2`,
-          [idInsumo, idLote]
-        );
-        const saldoAplicaciones = parseInt(saldoAnterior.rows[0].total) + aplicacionesTotal;
+        // 5. Movimiento de entrada en el kardex
+        const saldo = parseInt((await client.query(
+          'SELECT COALESCE(SUM(aplicaciones_disponibles), 0) AS total FROM lotes WHERE id_insumo = $1',
+          [insumo.id_insumo]
+        )).rows[0].total);
+        const previo = (await client.query(
+          'SELECT saldo_valorado FROM detalle_kardex WHERE id_kardex = $1 ORDER BY fecha DESC, id_detalle DESC LIMIT 1',
+          [kardex.id_kardex]
+        )).rows[0];
+        const saldoValorado = redondear((previo ? parseFloat(previo.saldo_valorado) : 0) + costoTotal);
 
-        const valoradoAnterior = await client.query(
-          `SELECT saldo_valorado 
-FROM detalle_kardex 
-WHERE id_kardex = $1 
-ORDER BY id_detalle DESC 
-LIMIT 1`,
-          [idKardex]
-        );
-        const saldoValoradoAnterior = valoradoAnterior.rows.length > 0
-          ? parseInt(valoradoAnterior.rows[0].saldo_valorado)
-          : 0;
-        const nuevoSaldoValorizado = saldoValoradoAnterior + costoTotal;
-
-        // PASO 5: Registrar movimiento
         await client.query(
-          `INSERT INTO detalle_kardex 
-(id_kardex, id_lote, fecha, entradas, salidas, ajustes, saldo, 
- clave_doc, recibido_de, recepcionado_por, costo_unitario, saldo_valorado)
-VALUES ($1, $2, CURRENT_TIMESTAMP, $3, 0, 0, $4, $5, $6, $7, $8, $9)`,
-          [
-            idKardex,
-            idLote,
-            aplicacionesTotal,
-            saldoAplicaciones,
-            `98`,
-            'FIM',
-            req.session.userId,
-            costoPorAplicacion,
-            nuevoSaldoValorizado
-          ]
+          `INSERT INTO detalle_kardex (id_kardex, id_lote, fecha, entradas, salidas, ajustes, saldo,
+                                       clave_doc, recibido_de, recepcionado_por, costo_unitario, saldo_valorado)
+           VALUES ($1, $2, CURRENT_TIMESTAMP, $3, 0, 0, $4, $5, 'FIM', $6, $7, $8)`,
+          [kardex.id_kardex, lote.id_lote, aplicaciones, saldo, claveDoc, req.session.userId, costoPorAplicacion, saldoValorado]
         );
 
-        itemsProcesados++;
+        it.id_insumo = insumo.id_insumo;
+        it.procesado = true;
       }
 
-      // PASO FINAL: Actualizar formulario con sede
+      // 6. Cerrar el formulario
+      await Formulario.guardarRevision(id, encabezado, items, client);
       await client.query(
-        `UPDATE formularios_salmi 
-SET procesado = TRUE, total = $1, sede = $2, fecha_entrega = CURRENT_TIMESTAMP
-WHERE id_formulario = $3`,
-        [itemsProcesados, sede, formularioId]
+        `UPDATE formularios_salmi
+         SET estado = 'importado', procesado = TRUE, total = $2, fecha_entrega = CURRENT_TIMESTAMP
+         WHERE id_formulario = $1`,
+        [id, items.length]
       );
 
       await client.query('COMMIT');
-      console.log(`Importación exitosa: ${itemsProcesados} ítems procesados en sede ${sede}`);
-
-      req.session.success = `Importado: ${itemsProcesados} insumos en sede ${sede}`;
-      res.redirect('/ocr');
-
+      const total = redondear(items.reduce((s, it) => s + it.costo_total, 0));
+      req.session.success = `Formulario importado: ${items.length} ítem(s) por Bs ${total.toFixed(2)} ingresaron al kardex.`;
+      res.redirect(`/ocr/review/${id}`);
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('Error en importación:', error);
-      req.session.error = 'Error al importar: ' + error.message;
-      res.redirect(`/ocr/review/${req.params.id}`);
+      req.session.error = 'No se importó: ' + error.message;
+      res.redirect(`/ocr/review/${id}`);
     } finally {
       client.release();
     }
   };
 }
 
-export default OCRController; // ⬅️ CAMBIADO: module.exports a export default
+export default OCRController;

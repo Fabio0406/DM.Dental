@@ -1,155 +1,403 @@
-<% const body = `
-<div class="container-fluid mt-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-search"></i> Revisar Datos Extraídos</h3>
-        <div>
-          <span class="badge ${formulario.procesado ? 'bg-success' : 'bg-warning'}">
-            ${formulario.procesado ? '<i class="bi bi-check-circle"></i> Procesado' : '<i class="bi bi-hourglass-split"></i> Pendiente'}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
+<%
+const f = formulario;
+const editable = f.estado === 'pendiente' || f.estado === 'error';
+const fechaInput = (v) => {
+    if (!v) return '';
+    if (typeof v === 'string') return v.slice(0, 10);
+    const d = new Date(v);
+    return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const fechaHora = (v) => v ? new Date(v).toLocaleString('es-BO', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+const moneda = (v) => 'Bs ' + (parseFloat(v) || 0).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  <div class="row">
-    <!-- Imagen original -->
-    <div class="col-lg-4">
-      <div class="card">
+const ESTADOS = {
+    procesando: { tono: 'info', icono: 'loader-circle', texto: 'Leyendo' },
+    pendiente: { tono: 'warning', icono: 'hourglass', texto: 'Pendiente de revisión' },
+    error: { tono: 'danger', icono: 'circle-alert', texto: 'Error de lectura' },
+    importado: { tono: 'success', icono: 'circle-check', texto: 'Importado' },
+    cancelado: { tono: 'neutral', icono: 'ban', texto: 'Cancelado' }
+};
+const est = ESTADOS[f.estado] || ESTADOS.pendiente;
+const titulo = f.nro_formulario ? `Formulario N° ${esc(f.nro_formulario)}` : `Formulario #${f.id_formulario}`;
+
+const totalItems = items.reduce((s, it) => s + (parseFloat(it.costo_total) || 0), 0);
+const nVencidos = items.filter(it => it.vencido).length;
+const nDuplicados = items.filter(it => it.duplicado).length;
+const nDudosos = items.filter(it => it.dudoso).length;
+
+// Catálogo mínimo para las sugerencias por nombre (se calculan en el navegador)
+const catalogoJson = JSON.stringify(insumos.map(i => ({
+    id: i.id_insumo, codigo: i.codigo, nombre: i.nombre_generico, rendimiento: i.rendimiento_teorico || 1
+}))).replace(/</g, '\\u003c');
+const opcionesCategoria = categorias.map(c => `<option value="${c.id_categoria_insumo}">${esc(c.nombre)}</option>`).join('');
+
+// El selector arranca solo con "Crear nuevo" y, si existe, el insumo elegido;
+// las sugerencias por nombre se agregan en el navegador.
+const opcionesInsumo = (catalogo) =>
+    `<option value="nuevo" ${!catalogo ? 'selected' : ''}>➕ Crear insumo nuevo</option>` +
+    (catalogo ? `<option value="${catalogo.id_insumo}" data-rendimiento="${catalogo.rendimiento_teorico || 1}" selected>${esc(catalogo.codigo)} · ${esc(catalogo.nombre_generico)}</option>` : '');
+
+// Un ítem editable: dos líneas de datos + panel de insumo nuevo
+const filaItem = (it, k) => {
+    const catalogo = it.insumo_catalogo;
+    const marcas = [
+        it.vencido ? '<span class="badge badge-soft-warning"><i data-lucide="calendar-x"></i> Vencido</span>' : '',
+        it.duplicado ? '<span class="badge badge-soft-danger"><i data-lucide="copy"></i> Lote ya registrado</span>' : '',
+        it.dudoso ? `<span class="badge badge-soft-warning" title="${esc(it.observacion || '')}"><i data-lucide="scan-eye"></i> Revisar: ${esc(it.observacion || 'lectura dudosa')}</span>` : ''
+    ].join(' ');
+    const clase = it.duplicado ? ' is-duplicado' : it.dudoso ? ' is-dudoso' : '';
+    return `
+    <div class="item-row${clase}" data-k="${k}" data-duplicado="${it.duplicado ? 1 : 0}">
+        <div class="item-n n-fila"></div>
+        <div class="item-cod">
+            <label class="form-label">Código</label>
+            <input type="text" class="form-control form-control-sm text-uppercase" name="items[${k}][codigo]" value="${esc(it.codigo || '')}" required data-codigo>
+        </div>
+        <div class="item-nom">
+            <label class="form-label">Nombre genérico</label>
+            <input type="text" class="form-control form-control-sm" name="items[${k}][nombre_generico]" value="${esc(it.nombre_generico || '')}" title="${esc(it.nombre_generico || '')}" required data-nombre>
+        </div>
+        <div class="item-ins">
+            <label class="form-label">Insumo del catálogo</label>
+            <select class="form-select form-select-sm" name="items[${k}][id_insumo]" data-insumo>${opcionesInsumo(catalogo)}</select>
+            <div class="form-text" data-insumo-ayuda></div>
+        </div>
+        <div class="item-del">
+            <button type="button" class="btn-icon danger" data-quitar title="Quitar ítem" aria-label="Quitar ítem"><i data-lucide="trash-2" class="icon-sm"></i></button>
+        </div>
+        <div class="item-det">
+            <div>
+                <label class="form-label">Lote</label>
+                <input type="text" class="form-control form-control-sm" name="items[${k}][numero_lote]" value="${esc(it.numero_lote || '')}" required>
+            </div>
+            <div>
+                <label class="form-label">Vencimiento</label>
+                <input type="date" class="form-control form-control-sm" name="items[${k}][fecha_vencimiento]" value="${esc(it.fecha_vencimiento || '')}" required data-vence>
+            </div>
+            <div>
+                <label class="form-label">Cantidad</label>
+                <input type="number" class="form-control form-control-sm text-end" name="items[${k}][cantidad]" value="${it.cantidad ?? ''}" min="1" step="1" required data-cantidad>
+            </div>
+            <div>
+                <label class="form-label">C. unit. (Bs)</label>
+                <input type="number" class="form-control form-control-sm text-end" name="items[${k}][costo_unitario]" value="${it.costo_unitario ?? ''}" min="0.01" step="0.01" required data-costo>
+            </div>
+            <div class="item-subtotal">
+                <span class="form-label d-block">Subtotal</span>
+                <strong class="num" data-subtotal>—</strong>
+                <span class="cell-sub" data-aplicaciones></span>
+            </div>
+        </div>
+        <div class="item-marcas" data-marcas>${marcas}</div>
+        <div class="item-nuevo" ${catalogo ? 'hidden' : ''}>
+            <div class="item-nuevo-titulo"><i data-lucide="sparkles" class="icon-sm"></i> Datos del insumo nuevo</div>
+            <div class="item-nuevo-campos">
+                <div>
+                    <label class="form-label">Categoría<span class="req">*</span></label>
+                    <select class="form-select form-select-sm" name="items[${k}][nuevo_categoria]" data-req-nuevo>
+                        <option value="">Selecciona…</option>${opcionesCategoria}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Aplicaciones por unidad<span class="req">*</span></label>
+                    <input type="number" class="form-control form-control-sm" name="items[${k}][nuevo_rendimiento]" min="1" step="1" value="1" data-req-nuevo data-rendimiento-nuevo>
+                </div>
+                <div>
+                    <label class="form-label">Stock mínimo (apl.)</label>
+                    <input type="number" class="form-control form-control-sm" name="items[${k}][nuevo_minimo]" min="0" step="1" value="10">
+                </div>
+                <div>
+                    <label class="form-label">Forma farmacéutica</label>
+                    <input type="text" class="form-control form-control-sm" name="items[${k}][forma_farmaceutica]" value="${esc(it.forma_farmaceutica || '')}">
+                </div>
+                <div>
+                    <label class="form-label">Concentración</label>
+                    <input type="text" class="form-control form-control-sm" name="items[${k}][concentracion]" value="${esc(it.concentracion || '')}">
+                </div>
+            </div>
+        </div>
+        <input type="hidden" name="items[${k}][confianza]" value="${it.confianza ?? ''}">
+        <input type="hidden" name="items[${k}][dudoso]" value="${it.dudoso ? 'true' : 'false'}">
+        <input type="hidden" name="items[${k}][observacion]" value="${esc(it.observacion || '')}">
+    </div>`;
+};
+
+// Vista de solo lectura (importado / cancelado)
+const filaLectura = (it, i) => `
+    <tr>
+        <td class="text-muted num">${i + 1}</td>
+        <td><span class="cell-main">${esc(it.nombre_generico || '—')}</span><span class="cell-sub"><code>${esc(it.codigo || '')}</code></span></td>
+        <td>${it.numero_lote ? `<code>${esc(it.numero_lote)}</code>` : '—'}</td>
+        <td class="num">${it.fecha_vencimiento ? it.fecha_vencimiento.split('-').reverse().join('/') : '—'}</td>
+        <td class="text-end num">${it.cantidad ?? '—'}</td>
+        <td class="text-end num">${it.costo_unitario !== null ? moneda(it.costo_unitario) : '—'}</td>
+        <td class="text-end num fw-semibold">${it.costo_total !== null ? moneda(it.costo_total) : '—'}</td>
+    </tr>`;
+
+const campo = (nombre, etiqueta, valor) => `
+    <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="h_${nombre}">${etiqueta}</label>
+        <input type="text" class="form-control form-control-sm" id="h_${nombre}" name="${nombre}" value="${esc(valor || '')}">
+    </div>`;
+
+const tarjetaFoto = `
+    <div class="card mb-3">
         <div class="card-header">
-          <h6><i class="bi bi-file-earmark-text"></i> Formulario Original</h6>
-        </div>
-        <div class="card-body text-center">
-          <img src="${formulario.imagen_path}" alt="Formulario SALMI" class="img-fluid border rounded" style="max-height: 400px;">
-          <p class="mt-2 text-muted small">
-            Escaneado: ${formulario.fecha_escaneo ? new Date(formulario.fecha_escaneo).toLocaleString('es-BO') : 'Sin fecha registrada'}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Datos extraídos -->
-    <div class="col-lg-8">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between">
-          <h6><i class="bi bi-bar-chart-line"></i> Datos Extraídos por IA</h6>
-          <small class="text-muted">${detalles.length} item(s) detectado(s)</small>
+            <h2 class="card-title"><i data-lucide="file-image"></i> Formulario original</h2>
+            <a href="${esc(f.imagen_path)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm"><i data-lucide="maximize-2" class="icon-sm"></i> Ver en tamaño completo</a>
         </div>
         <div class="card-body">
-
-          ${!formulario.procesado && detalles.length > 0 ? `
-          <div class="alert alert-info mb-3">
-            <h6><i class="bi bi-info-circle"></i> Procesamiento pendiente</h6>
-            <p class="mb-0">Revisa y confirma los insumos antes de importarlos al Kardex.</p>
-          </div>` : ''}
-
-          ${formulario.procesado ? `
-          <div class="alert alert-success mb-3">
-            <h6><i class="bi bi-check-circle"></i> Formulario procesado</h6>
-            <p class="mb-0">Este formulario ya fue confirmado e importado correctamente.</p>
-          </div>` : ''}
-
-          ${detalles.length > 0 ? `
-          <form method="POST" action="/ocr/confirmar/${formulario.id_formulario}" id="formConfirmar">
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered">
-                <thead class="table-light">
-                  <tr>
-                    <th style="width: 10%;">Código</th>
-                    <th style="width: 30%;">Insumo</th>
-                    <th style="width: 8%;">Cant.</th>
-                    <th style="width: 15%;">Lote</th>
-                    <th style="width: 17%;">Vencimiento</th>
-                    <th style="width: 15%;">Costo</th>
-                    <th style="width: 5%;"></th>
-                  </tr>
-                </thead>
-                <tbody id="tablaDetalles">
-                  ${detalles.map((detalle, index) => {
-                    let fechaFormateada = '';
-                    if (detalle.vencimiento) {
-                      try {
-                        const fecha = new Date(detalle.vencimiento);
-                        fecha.setDate(fecha.getDate() + 1);
-                        fechaFormateada = fecha.toISOString().split('T')[0];
-                      } catch (e) {
-                        fechaFormateada = '';
-                      }
-                    }
-
-                    return `
-                    <tr>
-                      <td>
-                        <input type="text" class="form-control form-control-sm" name="codigo_${index}" value="${detalle.codigo || ''}" placeholder="N0111" required>
-                      </td>
-                      <td>
-                        <input type="text" class="form-control form-control-sm" name="nombre_${index}" value="${detalle.nombre || ''}" placeholder="Nombre del insumo" required>
-                      </td>
-                      <td>
-                        <input type="number" class="form-control form-control-sm" name="cantidad_${index}" value="${detalle.cantidad || 1}" min="1" required>
-                      </td>
-                      <td>
-                        <input type="text" class="form-control form-control-sm" name="lote_${index}" value="${detalle.lote || ''}" placeholder="Lote" required>
-                      </td>
-                      <td>
-                        <input type="date" class="form-control form-control-sm" name="vencimiento_${index}" value="${fechaFormateada}" required>
-                      </td>
-                      <td>
-                        <input type="number" step="0.01" class="form-control form-control-sm" name="costo_${index}" value="${detalle.costo || 0}" min="0" placeholder="0.00" required>
-                      </td>
-                      <td>
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove(); actualizarTotal()">
-                          <i data-lucide="trash-2"></i>
-                        </button>
-                      </td>
-                    </tr>`;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-
-            <input type="hidden" name="total_items" id="total_items" value="${detalles.length}">
-
-            <div class="d-flex gap-2 justify-content-end mt-3">
-              <a href="/ocr" class="btn btn-outline-secondary"><i class="bi bi-journal-text"></i> Ver formularios</a>
-              <button type="button" class="btn btn-primary" onclick="agregarFila()"><i class="bi bi-plus"></i> Agregar</button>
-              ${!formulario.procesado ? `<button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Confirmar e Importar</button>` : ''}
-            </div>
-          </form>` : `
-          <div class="alert alert-warning">
-            <h6><i class="bi bi-exclamation-triangle"></i> No se detectaron insumos</h6>
-            <a href="/ocr/upload" class="btn btn-primary mt-2"><i class="bi bi-camera"></i> Intentar con otra imagen</a>
-          </div>`}
+            <a href="${esc(f.imagen_path)}" target="_blank" rel="noopener"><img src="${esc(f.imagen_path)}" alt="Imagen del formulario SALMI" class="doc-preview review-preview"></a>
         </div>
-      </div>
+    </div>`;
+
+const body = `
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="files" class="icon-sm"></i> <a href="/ocr">Formularios SALMI</a> <i data-lucide="chevron-right" class="icon-sm"></i> ${titulo}</div>
+        <h1 class="page-title">${f.estado === 'importado' ? 'Formulario importado' : f.estado === 'cancelado' ? 'Importación cancelada' : f.estado === 'procesando' ? 'Leyendo formulario…' : 'Revisar e importar'}</h1>
+        <p class="page-subtitle">${f.tipo_formulario ? esc(f.tipo_formulario) + ' · ' : ''}Escaneado el ${fechaHora(f.fecha_escaneo)}</p>
     </div>
-  </div>
+    <div class="page-actions align-items-center">
+        <span class="badge badge-soft-${est.tono} fs-6"><i data-lucide="${est.icono}"></i> ${est.texto}</span>
+        ${editable ? `
+        <form method="POST" action="/ocr/releer/${f.id_formulario}" onsubmit="return confirm('Se volverá a leer la imagen y se reemplazarán los datos que corregiste. ¿Continuar?')">
+            <button type="submit" class="btn btn-light"><i data-lucide="refresh-cw"></i> Volver a leer</button>
+        </form>` : ''}
+    </div>
 </div>
 
-<script>
-  let contadorFilas = detalles.length;
-  function actualizarTotal() {
-    const filas = document.querySelectorAll('#tablaDetalles tr');
-    document.getElementById('total_items').value = filas.length;
-  }
+${success || error ? `
+<div class="flash-stack">
+    ${success ? `<div class="alert alert-success alert-dismissible fade show" role="status"><i data-lucide="circle-check"></i><div>${esc(success)}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>` : ''}
+    ${error ? `<div class="alert alert-danger alert-dismissible fade show" role="alert"><i data-lucide="circle-alert"></i><div>${esc(error)}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>` : ''}
+</div>` : ''}
 
-  function agregarFila() {
-    const tbody = document.getElementById('tablaDetalles');
-    const row = document.createElement('tr');
-    row.innerHTML =
-      '<td><input type="text" class="form-control form-control-sm" name="codigo_' + contadorFilas + '" required></td>' +
-      '<td><input type="text" class="form-control form-control-sm" name="nombre_' + contadorFilas + '" required></td>' +
-      '<td><input type="number" class="form-control form-control-sm" name="cantidad_' + contadorFilas + '" value="1" min="1" required></td>' +
-      '<td><input type="text" class="form-control form-control-sm" name="lote_' + contadorFilas + '" required></td>' +
-      '<td><input type="date" class="form-control form-control-sm" name="vencimiento_' + contadorFilas + '" required></td>' +
-      '<td><input type="number" step="0.01" class="form-control form-control-sm" name="costo_' + contadorFilas + '" placeholder="100.00" required></td>' +
-      '<td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest(\'tr\').remove(); actualizarTotal()"><i class="bi bi-x"></i></button></td>';
-    tbody.appendChild(row);
-    contadorFilas++;
-    actualizarTotal();
-  }
-</script>
-`; %>
+${f.estado !== 'cancelado' ? `
+<ol class="steps mb-3" aria-label="Pasos">
+    <li class="is-done"><span class="step-num"><i data-lucide="check" class="icon-sm"></i></span> Subir imagen</li>
+    <li class="${f.estado === 'procesando' ? 'is-current' : 'is-done'}"><span class="step-num">${f.estado === 'procesando' ? '2' : '<i data-lucide="check" class="icon-sm"></i>'}</span> Leer formulario</li>
+    <li class="${editable ? 'is-current' : f.estado === 'importado' ? 'is-done' : ''}"><span class="step-num">${f.estado === 'importado' ? '<i data-lucide="check" class="icon-sm"></i>' : '3'}</span> Revisar</li>
+    <li class="${f.estado === 'importado' ? 'is-done' : ''}"><span class="step-num">${f.estado === 'importado' ? '<i data-lucide="check" class="icon-sm"></i>' : '4'}</span> Importar al kardex</li>
+</ol>` : ''}
+
+${f.estado === 'procesando' ? `
+    ${tarjetaFoto}
+    <div class="card">
+        <div class="empty-state">
+            <div class="spinner-border mb-3" role="status" style="width: 3rem; height: 3rem"></div>
+            <h3>Leyendo el formulario…</h3>
+            <p>Estamos reconociendo el texto y armando la tabla. Suele tardar unos segundos; esta página se actualizará sola.</p>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalCancelar"><i data-lucide="ban"></i> Cancelar importación</button>
+        </div>
+    </div>
+` : ''}
+
+${f.estado === 'cancelado' || f.estado === 'importado' ? `
+    ${f.estado === 'cancelado' ? `
+    <div class="alert alert-light mb-3">
+        <i data-lucide="ban"></i>
+        <div>
+            <p class="alert-heading">Importación cancelada el ${fechaHora(f.fecha_cancelacion)}</p>
+            <div>Motivo: ${esc(f.motivo_cancelacion || '—')}</div>
+            <div class="small text-muted mt-1">El inventario no se modificó.</div>
+        </div>
+    </div>` : `
+    <div class="alert alert-success mb-3">
+        <i data-lucide="circle-check"></i>
+        <div>
+            <p class="alert-heading">Importado al kardex el ${fechaHora(f.fecha_entrega)}</p>
+            <div>${f.total} ítem(s) por ${moneda(totalItems)}. <a href="/kardex" class="fw-semibold">Ver kardex</a></div>
+        </div>
+    </div>`}
+    ${tarjetaFoto}
+    <div class="card mb-3">
+        <div class="card-header"><h2 class="card-title"><i data-lucide="info"></i> Datos del formulario</h2></div>
+        <div class="card-body">
+            <dl class="meta-grid">
+                <div><dt>Tipo</dt><dd>${esc(f.tipo_formulario || '—')}</dd></div>
+                <div><dt>N°</dt><dd>${esc(f.nro_formulario || '—')}</dd></div>
+                <div><dt>N° documento</dt><dd>${esc(f.nro_documento || '—')}</dd></div>
+                <div><dt>Fecha</dt><dd>${fechaInput(f.fecha_elaboracion).split('-').reverse().join('/') || '—'}</dd></div>
+                <div><dt>Responsable</dt><dd>${esc(f.responsable || '—')}</dd></div>
+                <div><dt>Representante</dt><dd>${esc(f.representante || '—')}</dd></div>
+                <div><dt>Elaborado por</dt><dd>${esc(f.elaborado_por || '—')}</dd></div>
+                <div><dt>Observaciones</dt><dd>${esc(f.observaciones || '—')}</dd></div>
+            </dl>
+        </div>
+    </div>
+    ${items.length ? `
+    <div class="card table-card">
+        <div class="card-header"><h2 class="card-title"><i data-lucide="list"></i> Ítems</h2><span class="text-muted small">${items.length} ítem(s) · ${moneda(totalItems)}</span></div>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th>#</th><th>Insumo</th><th>Lote</th><th>Vence</th><th class="text-end">Cant.</th><th class="text-end">C. unit.</th><th class="text-end">Total</th></tr></thead>
+                <tbody>${items.map(filaLectura).join('')}</tbody>
+            </table>
+        </div>
+    </div>` : ''}
+` : ''}
+
+${editable ? `
+    ${f.estado === 'error' ? `
+    <div class="alert alert-danger mb-3"><i data-lucide="circle-alert"></i>
+        <div><p class="alert-heading">No se pudo leer la imagen</p><div>${esc(f.error_ocr || '')}</div>
+        <div class="small mt-1">Puedes volver a intentarlo, ingresar los ítems manualmente o cancelar la importación.</div></div>
+    </div>` : ''}
+
+    ${duplicados.length ? `
+    <div class="alert alert-danger mb-3"><i data-lucide="copy"></i>
+        <div><p class="alert-heading">Posible entrega ya importada</p>
+        ${duplicados.map(d => `<div>Coincide con el formulario <a href="/ocr/review/${d.id_formulario}" class="fw-semibold">${d.nro_formulario ? 'N° ' + esc(d.nro_formulario) : '#' + d.id_formulario}</a>${d.nro_documento ? ' (D-5 N° ' + esc(d.nro_documento) + ')' : ''} · importado el ${fechaHora(d.fecha_entrega)}</div>`).join('')}
+        <div class="small mt-1">Si es la misma entrega, cancela esta importación para no duplicar el stock.</div></div>
+    </div>` : ''}
+
+    ${avisos.length || nVencidos || nDuplicados ? `
+    <div class="alert alert-warning mb-3"><i data-lucide="triangle-alert"></i>
+        <div>
+            ${avisos.map(a => `<div>${esc(a)}</div>`).join('')}
+            ${nVencidos ? `<div><strong>${nVencidos} lote(s) vencido(s).</strong> Se pueden importar, pero no se usarán en los consumos.</div>` : ''}
+            ${nDuplicados ? `<div><strong>${nDuplicados} lote(s) ya existen en el inventario</strong> con el mismo código y número de lote.</div>` : ''}
+        </div>
+    </div>` : ''}
+
+    ${tarjetaFoto}
+
+    <form id="formRevision" method="POST" action="/ocr/confirmar/${f.id_formulario}">
+        <div class="card mb-3">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title"><i data-lucide="file-text"></i> Datos del formulario</h2>
+                    <p class="card-subtitle">Leídos de la imagen; corrige lo que haga falta.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-sm-6 col-lg-4">
+                        <label class="form-label" for="h_tipo">Tipo de formulario</label>
+                        <select class="form-select form-select-sm" id="h_tipo" name="tipo_formulario">
+                            <option value="">—</option>
+                            <option ${f.tipo_formulario === 'DISTRIBUCION INTERNA' ? 'selected' : ''}>DISTRIBUCION INTERNA</option>
+                            <option ${f.tipo_formulario === 'CONSUMO INTERNO' ? 'selected' : ''}>CONSUMO INTERNO</option>
+                        </select>
+                    </div>
+                    ${campo('nro_formulario', 'N° de formulario', f.nro_formulario)}
+                    ${campo('nro_documento', 'N° de documento (D-5)', f.nro_documento)}
+                    <div class="col-sm-6 col-lg-4">
+                        <label class="form-label" for="h_fecha">Fecha</label>
+                        <input type="date" class="form-control form-control-sm" id="h_fecha" name="fecha_elaboracion" value="${fechaInput(f.fecha_elaboracion)}">
+                    </div>
+                    ${campo('sede', 'Sede', f.sede)}
+                    ${campo('botiquin', 'Botiquín', f.botiquin)}
+                    ${campo('responsable', 'Responsable', f.responsable)}
+                    ${campo('representante', 'Representante', f.representante)}
+                    ${campo('elaborado_por', 'Elaborado por', f.elaborado_por)}
+                    <div class="col-lg-8">
+                        <label class="form-label" for="h_obs">Observaciones</label>
+                        <input type="text" class="form-control form-control-sm" id="h_obs" name="observaciones" value="${esc(f.observaciones || '')}">
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <label class="form-label" for="h_total">Total impreso (Bs)</label>
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="h_total" name="total_formulario" value="${f.total_formulario ?? ''}">
+                    </div>
+                    <input type="hidden" name="establecimiento" value="${esc(f.establecimiento || '')}">
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title"><i data-lucide="list-checks"></i> Ítems</h2>
+                    <p class="card-subtitle">Cantidad en unidades físicas y costo por unidad, tal como figuran en el formulario.</p>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    ${nDudosos ? `<span class="badge badge-soft-warning"><i data-lucide="scan-eye"></i> ${nDudosos} por revisar</span>` : ''}
+                    <button type="button" class="btn btn-sm btn-light" id="btnAgregar"><i data-lucide="plus" class="icon-sm"></i> Agregar ítem</button>
+                </div>
+            </div>
+            <div class="items-list" id="listaItems">
+                ${items.map((it, k) => filaItem(it, k)).join('')}
+            </div>
+            <div class="empty-state py-4" id="sinItems" ${items.length ? 'hidden' : ''}>
+                <div class="empty-icon"><i data-lucide="list-plus"></i></div>
+                <p class="mb-2">No hay ítems. Agrégalos manualmente a partir de la imagen.</p>
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <div class="action-summary">
+                <span id="resumenItems">${items.length} ítem(s)</span> · Total <strong id="totalItems">${moneda(totalItems)}</strong>
+                <span id="estadoTotal" class="ms-1"></span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalCancelar"><i data-lucide="ban"></i> Cancelar importación</button>
+                <button type="submit" class="btn btn-light" formaction="/ocr/guardar/${f.id_formulario}" formnovalidate><i data-lucide="save"></i> Guardar cambios</button>
+                <button type="button" class="btn btn-primary" id="btnRevisarImportar"><i data-lucide="database-zap"></i> Importar al kardex</button>
+            </div>
+        </div>
+    </form>
+
+    <template id="plantillaItem">${filaItem({ insumo_catalogo: null }, '__K__')}</template>
+    <script type="application/json" id="catalogoInsumos">${catalogoJson}</script>
+` : ''}
+
+${f.estado === 'procesando' || editable ? `
+<!-- Modal: cancelar importación -->
+<div class="modal fade" id="modalCancelar" tabindex="-1" aria-labelledby="cancelarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" method="POST" action="/ocr/cancelar/${f.id_formulario}">
+            <div class="modal-header">
+                <h2 class="modal-title" id="cancelarTitulo"><span class="modal-icon danger"><i data-lucide="ban"></i></span> Cancelar importación</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p>El formulario quedará como <strong>cancelado</strong> y no se registrará nada en el inventario. La imagen se conserva como respaldo.</p>
+                <label for="motivoCancelacion" class="form-label">Motivo<span class="req">*</span></label>
+                <textarea class="form-control" id="motivoCancelacion" name="motivo" rows="3" minlength="3" maxlength="500" required placeholder="Ej: formulario duplicado, foto equivocada, entrega devuelta…"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Volver</button>
+                <button type="submit" class="btn btn-danger"><i data-lucide="ban"></i> Cancelar importación</button>
+            </div>
+        </form>
+    </div>
+</div>` : ''}
+
+${editable ? `
+<!-- Modal: confirmar importación -->
+<div class="modal fade" id="modalImportar" tabindex="-1" aria-labelledby="importarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="importarTitulo"><span class="modal-icon"><i data-lucide="database-zap"></i></span> Confirmar importación</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="resumenImportacion"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Seguir revisando</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarImportar"><i data-lucide="check"></i> Importar</button>
+            </div>
+        </div>
+    </div>
+</div>` : ''}
+
+${f.estado === 'procesando' ? `
+<script>
+// Consultar el estado de la lectura y recargar al terminar
+(function consultar() {
+    setTimeout(async function () {
+        try {
+            const r = await fetch('/ocr/estado/${f.id_formulario}');
+            const d = await r.json();
+            if (d.estado !== 'procesando') return location.reload();
+        } catch (e) {}
+        consultar();
+    }, 2000);
+})();
+</script>` : ''}
+${editable ? `<script>window.REVISION_SIGUIENTE = ${items.length};</script><script src="/js/ocr-revision.js"></script>` : ''}
+`;
+%>
 
 <%- include('../layouts/main', { title: title, body: body }) %>

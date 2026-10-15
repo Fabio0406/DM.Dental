@@ -1,233 +1,144 @@
 <%
-const formatearFecha = (fecha) => {
-    if (!fecha) return 'N/A';
-    const d = new Date(fecha);
-    const dia = String(d.getDate()).padStart(2, '0');
-    const mes = String(d.getMonth() + 1).padStart(2, '0');
-    const anio = d.getFullYear();
-    return `${dia}/${mes}/${anio}`;
-};
+const formatearFecha = (fecha) => fecha ? new Date(fecha).toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+const formatearMoneda = (valor) => 'Bs ' + (parseFloat(valor) || 0).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const formatearFechaInput = (fecha) => {
-    if (!fecha) return '';
-    const d = new Date(fecha);
-    const dia = String(d.getDate()).padStart(2, '0');
-    const mes = String(d.getMonth() + 1).padStart(2, '0');
-    const anio = d.getFullYear();
-    return `${anio}-${mes}-${dia}`;
-};
+const movimientos = kardex.movimientos || [];
+const totales = movimientos.reduce((t, m) => {
+    t.entradas += parseInt(m.entradas) || 0;
+    t.salidas += parseInt(m.salidas) || 0;
+    return t;
+}, { entradas: 0, salidas: 0 });
+const ultimo = movimientos[movimientos.length - 1];
+const hayFiltro = filtros.fecha_inicio || filtros.fecha_fin;
 
-const formatearMoneda = (valor) => {
-    return new Intl.NumberFormat('es-BO', { 
-        style: 'currency', 
-        currency: 'BOB',
-        minimumFractionDigits: 2 
-    }).format(valor || 0);
-};
+// El ajuste se guarda en valor absoluto: el signo se deduce de la variación del saldo
+let saldoPrevio = null;
+const filas = movimientos.map(mov => {
+    const saldo = parseInt(mov.saldo) || 0;
+    let ajuste = '';
+    if (parseInt(mov.ajustes)) {
+        const signo = saldoPrevio !== null && saldo > saldoPrevio ? '+' : '−';
+        ajuste = signo + mov.ajustes;
+    }
+    saldoPrevio = saldo;
+    return `
+    <tr>
+        <td class="text-center num">${formatearFecha(mov.fecha)}</td>
+        <td class="text-end num mv-in">${mov.entradas > 0 ? mov.entradas : ''}</td>
+        <td class="text-end num mv-out">${mov.salidas > 0 ? mov.salidas : ''}</td>
+        <td class="text-end num mv-adj">${ajuste}</td>
+        <td class="text-end num fw-bold">${saldo}</td>
+        <td class="text-center"><small>${esc(mov.clave_doc || '')}</small></td>
+        <td><small>${esc(mov.entradas > 0 ? (mov.recibido_de || 'FIM') : (mov.recibido_de || mov.usuario || ''))}</small></td>
+        <td class="text-end num"><small>${formatearMoneda(mov.costo_unitario)}</small></td>
+        <td class="text-end num fw-semibold">${formatearMoneda(mov.saldo_valorado)}</td>
+        <td class="text-center num"><small>${formatearFecha(mov.fecha_vencimiento)}</small></td>
+        <td class="text-center">${mov.numero_lote ? `<code>${esc(mov.numero_lote)}</code>` : ''}</td>
+    </tr>`;
+}).join('');
 
 const body = `
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h3><i data-lucide="file-text"></i> Kardex Valorado</h3>
-                    <p class="text-muted mb-0">${kardex.nombre_generico}</p>
-                </div>
-                <div class="btn-group">
-                    <a href="/kardex/historial/${kardex.id_insumo}" class="btn btn-outline-primary">
-                        <i data-lucide="history"></i> Ver Historial
-                    </a>
-                    <a href="/kardex" class="btn btn-outline-secondary">
-                        <i data-lucide="arrow-left"></i> Volver
-                    </a>
-                </div>
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="book-open" class="icon-sm"></i> <a href="/kardex">Kardex</a> <i data-lucide="chevron-right" class="icon-sm"></i> ${esc(kardex.codigo)}</div>
+        <h1 class="page-title">${esc(kardex.nombre_generico)}</h1>
+        <p class="page-subtitle">Kardex valorado N° ${esc(kardex.numero_kardex)} · Gestión ${kardex.gestion}</p>
+    </div>
+    <div class="page-actions">
+        <a href="/kardex/historial/${kardex.id_insumo}" class="btn btn-light"><i data-lucide="history"></i> Gestiones anteriores</a>
+        <a href="/kardex/exportar/${kardex.id_insumo}?fecha_inicio=${filtros.fecha_inicio || ''}&fecha_fin=${filtros.fecha_fin || ''}" class="btn btn-primary" target="_blank" rel="noopener">
+            <i data-lucide="file-down"></i> Exportar PDF
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header"><h2 class="card-title"><i data-lucide="info"></i> Datos del insumo</h2></div>
+            <div class="card-body">
+                <dl class="meta-grid">
+                    <div><dt>Código</dt><dd><code>${esc(kardex.codigo)}</code></dd></div>
+                    <div><dt>Forma farmacéutica</dt><dd>${esc(kardex.forma_farmaceutica || '—')}</dd></div>
+                    <div><dt>Concentración</dt><dd>${esc(kardex.concentracion || '—')}</dd></div>
+                    <div><dt>Presentación</dt><dd>${esc(kardex.presentacion || '—')}</dd></div>
+                    <div><dt>Ubicación</dt><dd>${esc(kardex.ubicacion || '—')}</dd></div>
+                    <div><dt>Apertura</dt><dd>${formatearFecha(kardex.fecha_apertura)}</dd></div>
+                    <div><dt>Responsable</dt><dd>${esc(responsable || '—')}</dd></div>
+                </dl>
             </div>
         </div>
     </div>
-
-    <!-- Información del Kardex -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i data-lucide="info"></i> Información del Kardex</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-2">
-                            <strong>Código:</strong><br>
-                            <code class="fs-5">${kardex.codigo}</code>
-                        </div>
-                        <div class="col-md-2">
-                            <strong>N° de Kardex:</strong><br>
-                            <span class="badge bg-info fs-6">${kardex.numero_kardex}</span>
-                        </div>
-                        <div class="col-md-2">
-                            <strong>Gestión:</strong><br>
-                            <span class="fs-5">${kardex.gestion}</span>
-                        </div>
-                        <div class="col-md-2">
-                            <strong>Forma Farmacéutica:</strong><br>
-                            ${kardex.forma_farmaceutica || 'N/A'}
-                        </div>
-                        <div class="col-md-2">
-                            <strong>Concentración:</strong><br>
-                            ${kardex.concentracion || 'N/A'}
-                        </div>
-                        <div class="col-md-2">
-                            <strong>Ubicación:</strong><br>
-                            ${kardex.ubicacion || 'N/A'}
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-md-3">
-                            <strong>Fecha Apertura:</strong><br>
-                            ${formatearFecha(kardex.fecha_apertura)}
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Responsable:</strong><br>
-                            ${responsable || 'N/A'}
-                        </div>
-                    </div>
+    <div class="col-lg-4">
+        <div class="row g-3 h-100">
+            <div class="col-6 col-lg-12">
+                <div class="stat-card tone-info">
+                    <span class="stat-icon"><i data-lucide="package"></i></span>
+                    <div><p class="stat-label">Saldo actual</p><p class="stat-value">${ultimo ? ultimo.saldo : 0} <span class="fs-6 text-muted fw-semibold">apl.</span></p></div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Filtros de Fecha -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i data-lucide="filter"></i> Filtrar por Fecha</h6>
-                </div>
-                <div class="card-body">
-                    <form method="GET" action="/kardex/ver/${kardex.id_insumo}" class="row g-3 align-items-end">
-                        <div class="col-md-4">
-                            <label class="form-label">Fecha Inicio</label>
-                            <input type="date" class="form-control" name="fecha_inicio" 
-                                   value="${filtros.fecha_inicio || ''}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Fecha Fin</label>
-                            <input type="date" class="form-control" name="fecha_fin" 
-                                   value="${filtros.fecha_fin || ''}">
-                        </div>
-                        <div class="col-md-4">
-                            <button type="submit" class="btn btn-primary me-2">
-                                <i data-lucide="search"></i> Filtrar
-                            </button>
-                            <a href="/kardex/ver/${kardex.id_insumo}" class="btn btn-outline-secondary">
-                                <i data-lucide="x"></i> Limpiar
-                            </a>
-                        </div>
-                    </form>
+            <div class="col-6 col-lg-12">
+                <div class="stat-card tone-success">
+                    <span class="stat-icon"><i data-lucide="wallet"></i></span>
+                    <div><p class="stat-label">Saldo valorado</p><p class="stat-value">${formatearMoneda(ultimo ? ultimo.saldo_valorado : 0)}</p></div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Tabla de movimientos (Kardex Valorado) - Formato SNUS-01 -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i data-lucide="table"></i> Movimientos del Kardex</h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm mb-0" style="font-size: 0.85rem;">
-                            <thead class="table-light">
-                                <tr class="text-center">
-                                    <th rowspan="2" style="vertical-align: middle;">FECHA</th>
-                                    <th colspan="3">MOVIMIENTOS</th>
-                                    <th rowspan="2" style="vertical-align: middle;">SALDO</th>
-                                    <th rowspan="2" style="vertical-align: middle;">N° Y CLAVE<br>DOC</th>
-                                    <th rowspan="2" style="vertical-align: middle;">RECIBIDO DE:<br>EXPEDIDO A:</th>
-                                    <th rowspan="2" style="vertical-align: middle;">COSTO<br>UNITARIO</th>
-                                    <th rowspan="2" style="vertical-align: middle;">SALDO<br>VALORADO</th>
-                                    <th rowspan="2" style="vertical-align: middle;">FECHA<br>VTO.</th>
-                                    <th rowspan="2" style="vertical-align: middle;">No.<br>LOTE</th>
-                                </tr>
-                                <tr class="text-center">
-                                    <th>ENTRADAS</th>
-                                    <th>SALIDAS</th>
-                                    <th>AJUSTES<br>(+/-)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${kardex.movimientos && kardex.movimientos.length > 0 ? kardex.movimientos.map(mov => `
-                                    <tr>
-                                        <td class="text-center">${formatearFecha(mov.fecha)}</td>
-                                        <td class="text-end ${mov.entradas > 0 ? 'bg-success bg-opacity-10' : ''}">
-                                            ${mov.entradas > 0 ? mov.entradas : ''}
-                                        </td>
-                                        <td class="text-end ${mov.salidas > 0 ? 'bg-danger bg-opacity-10' : ''}">
-                                            ${mov.salidas > 0 ? mov.salidas : ''}
-                                        </td>
-                                        <td class="text-end ${mov.ajustes != 0 ? 'bg-warning bg-opacity-10' : ''}">
-                                            ${mov.ajustes != 0 ? (mov.saldo > 0 ? '+' : '-') + mov.ajustes : ''}
-                                        </td>
-                                        <td class="text-end">
-                                            <strong>${mov.saldo}</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <small>${mov.clave_doc || ''}</small>
-                                        </td>
-                                        <td>
-                                            <small>
-                                                ${mov.entradas > 0 ? 
-                                                    (mov.recibido_de || 'FIM') : 
-                                                    responsable
-                                                }
-                                            </small>
-                                        </td>
-                                        <td class="text-end">
-                                            <small>${formatearMoneda(mov.costo_unitario)}</small>
-                                        </td>
-                                        <td class="text-end">
-                                            <strong>${formatearMoneda(mov.saldo_valorado)}</strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <small>${formatearFecha(mov.fecha_vencimiento)}</small>
-                                        </td>
-                                        <td class="text-center">
-                                            <small><code>${mov.numero_lote || ''}</code></small>
-                                        </td>
-                                    </tr>
-                                `).join('') : `
-                                    <tr>
-                                        <td colspan="11" class="text-center py-4">
-                                            <p class="text-muted mb-0">No hay movimientos registrados en este Kardex</p>
-                                        </td>
-                                    </tr>
-                                `}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Botones de exportación -->
-    <div class="row mt-3">
-        <div class="col-12 text-end">
-            <a href="/kardex/exportar/${kardex.id_insumo}?fecha_inicio=${filtros.fecha_inicio || ''}&fecha_fin=${filtros.fecha_fin || ''}" 
-               class="btn btn-success" target="_blank">
-                <i data-lucide="file-down"></i> Exportar a PDF
-            </a>
         </div>
     </div>
 </div>
 
-<script>
-    // Reinicializar Lucide icons después de cargar el contenido dinámico
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-</script>
+<div class="card table-card">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title"><i data-lucide="table"></i> Movimientos</h2>
+            <p class="card-subtitle">${movimientos.length} registro(s) · ${totales.entradas} entradas · ${totales.salidas} salidas${hayFiltro ? ' · filtrado por fecha' : ''}</p>
+        </div>
+        <form method="GET" action="/kardex/ver/${kardex.id_insumo}" class="filter-bar">
+            <div>
+                <label class="form-label visually-hidden" for="fecha_inicio">Desde</label>
+                <input type="date" class="form-control form-control-sm" id="fecha_inicio" name="fecha_inicio" value="${filtros.fecha_inicio || ''}" aria-label="Desde">
+            </div>
+            <div>
+                <label class="form-label visually-hidden" for="fecha_fin">Hasta</label>
+                <input type="date" class="form-control form-control-sm" id="fecha_fin" name="fecha_fin" value="${filtros.fecha_fin || ''}" aria-label="Hasta">
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary"><i data-lucide="funnel" class="icon-sm"></i> Filtrar</button>
+            ${hayFiltro ? `<a href="/kardex/ver/${kardex.id_insumo}" class="btn btn-sm btn-light"><i data-lucide="x" class="icon-sm"></i> Limpiar</a>` : ''}
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm table-ledger align-middle">
+            <thead>
+                <tr>
+                    <th rowspan="2">Fecha</th>
+                    <th colspan="3">Movimientos</th>
+                    <th rowspan="2">Saldo</th>
+                    <th rowspan="2">N° y clave<br>doc.</th>
+                    <th rowspan="2">Recibido de /<br>expedido a</th>
+                    <th rowspan="2">Costo<br>unitario</th>
+                    <th rowspan="2">Saldo<br>valorado</th>
+                    <th rowspan="2">Fecha<br>vto.</th>
+                    <th rowspan="2">N° lote</th>
+                </tr>
+                <tr>
+                    <th>Entradas</th>
+                    <th>Salidas</th>
+                    <th>Ajustes</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${movimientos.length > 0 ? filas : `
+                    <tr><td colspan="11">
+                        <div class="empty-state py-4">
+                            <div class="empty-icon"><i data-lucide="inbox"></i></div>
+                            <p class="mb-0">${hayFiltro ? 'No hay movimientos en el rango de fechas seleccionado.' : 'Este kardex aún no tiene movimientos.'}</p>
+                        </div>
+                    </td></tr>
+                `}
+            </tbody>
+        </table>
+    </div>
+</div>
 `;
 %>
 

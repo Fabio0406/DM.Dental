@@ -1,139 +1,99 @@
 <%
+const formatearFecha = (f, hora) => f ? new Date(f).toLocaleString('es-BO', hora ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' }) : '—';
+const iniciales = ((user.nombres || ' ')[0] + (user.apellidos || ' ')[0]).toUpperCase();
+
 const body = `
-<div class="container-fluid mt-5">
-    <div class="row justify-content-center">
-        <div class="col-xl-8">
-
-            <!-- Cabecera -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="mb-1"><i class="bi bi-person-fill-gear text-primary"></i> Mi Perfil</h2>
-                    <p class="text-muted mb-0">Actualiza tus datos personales y contraseña</p>
-                </div>
-                <a href="/dashboard" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Volver al Dashboard
-                </a>
-            </div>
-
-            <!-- Alertas -->
-            ${success ? `<div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle-fill"></i> ${success}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>` : ''}
-            ${error ? `<div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle-fill"></i> ${error}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>` : ''}
-
-            <!-- Formulario -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="bi bi-person-lines-fill text-primary"></i> Información Personal</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="/users/profile" id="profileForm">
-                        <div class="row g-4">
-                            <!-- Nombres y Apellidos -->
-                            <div class="col-md-6">
-                                <label for="nombres" class="form-label"><strong>Nombres *</strong></label>
-                                <input type="text" class="form-control form-control-lg" id="nombres" name="nombres" 
-                                       value="${user.nombres}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="apellidos" class="form-label"><strong>Apellidos *</strong></label>
-                                <input type="text" class="form-control form-control-lg" id="apellidos" name="apellidos" 
-                                       value="${user.apellidos}" required>
-                            </div>
-
-                            <!-- Teléfono y Especialidad -->
-                            <div class="col-md-6">
-                                <label for="telefono" class="form-label"><strong>Teléfono</strong></label>
-                                <input type="tel" class="form-control" id="telefono" name="telefono" 
-                                       value="${user.telefono || ''}" placeholder="Ej: 77712345">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="especialidad" class="form-label"><strong>Especialidad</strong></label>
-                                <input type="text" class="form-control" id="especialidad" name="especialidad" 
-                                       value="${user.especialidad || ''}" placeholder="Ej: Odontología General">
-                            </div>
-                        </div>
-
-                        <hr class="my-5">
-
-                        <!-- Datos de Solo Lectura -->
-                        <h6 class="mb-4"><i class="bi bi-lock-fill text-secondary"></i> Información del Sistema (solo lectura)</h6>
-                        <div class="row g-4">
-                            <div class="col-md-4">
-                                <label class="form-label text-muted">Usuario</label>
-                                <input type="text" class="form-control bg-light" value="${user.username}" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label text-muted">CI</label>
-                                <input type="text" class="form-control bg-light" value="${user.ci}" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label text-muted">Email</label>
-                                <input type="email" class="form-control bg-light" value="${user.email}" readonly>
-                            </div>
-                        </div>
-
-                        <hr class="my-5">
-
-                        <!-- Cambio de Contraseña -->
-                        <h6 class="mb-4"><i class="bi bi-shield-lock-fill text-warning"></i> Cambiar Contraseña (opcional)</h6>
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <label for="password" class="form-label">Nueva Contraseña</label>
-                                <input type="password" class="form-control" id="password" name="password" 
-                                       placeholder="Mínimo 6 caracteres">
-                                <div class="form-text"><i class="bi bi-info-circle"></i> Deja vacío si no deseas cambiarla</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="confirm_password" class="form-label">Confirmar Contraseña</label>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password">
-                            </div>
-                        </div>
-
-                        <!-- Botones -->
-                        <div class="d-flex justify-content-end with-gap mt-5">
-                            <a href="/dashboard" class="btn btn-outline-secondary btn-lg me-3">
-                                <i class="bi bi-x-circle"></i> Cancelar
-                            </a>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check2-circle"></i> Guardar Cambios
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+<div class="page-header">
+    <div>
+        <div class="page-eyebrow"><i data-lucide="user-cog" class="icon-sm"></i> Cuenta</div>
+        <h1 class="page-title">Mi perfil</h1>
+        <p class="page-subtitle">Actualiza tus datos de contacto y tu contraseña.</p>
     </div>
 </div>
 
-<style>
-    .with-gap { gap: 1rem; }
-    .form-control[readonly] { background-color: #f8f9fa !important; }
-    .card-header { border-bottom: 1px solid #dee2e6; }
-</style>
+${success || error ? `
+<div class="flash-stack">
+    ${success ? `<div class="alert alert-success alert-dismissible fade show" role="status"><i data-lucide="circle-check"></i><div>${success}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>` : ''}
+    ${error ? `<div class="alert alert-danger alert-dismissible fade show" role="alert"><i data-lucide="circle-alert"></i><div>${error}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>` : ''}
+</div>` : ''}
 
-<script>
-    document.getElementById('profileForm').addEventListener('submit', function(e) {
-        const password = document.getElementById('password').value;
-        const confirm = document.getElementById('confirm_password').value;
-        
-        if (password && password.length < 6) {
-            e.preventDefault();
-            alert('La contraseña debe tener al menos 6 caracteres');
-            return;
-        }
-        
-        if (password !== confirm) {
-            e.preventDefault();
-            alert('Las contraseñas no coinciden');
-            return;
-        }
-    });
-</script>
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body text-center p-4">
+                <span class="avatar avatar-lg mb-3">${esc(iniciales)}</span>
+                <h2 class="h5 mb-1">${esc(user.nombres)} ${esc(user.apellidos)}</h2>
+                <p class="text-muted mb-3">@${esc(user.username)}</p>
+                <span class="badge badge-soft-brand"><i data-lucide="stethoscope"></i> Odontólogo</span>
+            </div>
+            <div class="card-footer">
+                <dl class="meta-grid" style="grid-template-columns: 1fr">
+                    <div><dt>CI</dt><dd>${user.ci}</dd></div>
+                    <div><dt>Email</dt><dd class="text-break">${esc(user.email)}</dd></div>
+                    <div><dt>N° de licencia</dt><dd>${esc(user.numero_licencia || '—')}</dd></div>
+                    <div><dt>Cuenta creada</dt><dd>${formatearFecha(user.fecha_creacion)}</dd></div>
+                    <div><dt>Último acceso</dt><dd>${formatearFecha(user.ultimo_acceso, true)}</dd></div>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <form method="POST" action="/users/profile" id="profileForm" data-loading="Guardando…">
+            <div class="card mb-3">
+                <div class="card-header"><h2 class="card-title"><i data-lucide="user-round"></i> Información personal</h2></div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="nombres" class="form-label">Nombres<span class="req">*</span></label>
+                            <input type="text" class="form-control" id="nombres" name="nombres" value="${esc(user.nombres)}" autocomplete="given-name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="apellidos" class="form-label">Apellidos<span class="req">*</span></label>
+                            <input type="text" class="form-control" id="apellidos" name="apellidos" value="${esc(user.apellidos)}" autocomplete="family-name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="telefono" class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="telefono" name="telefono" value="${esc(user.telefono || '')}" placeholder="Ej: 77712345" autocomplete="tel">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title"><i data-lucide="key-round"></i> Cambiar contraseña</h2>
+                        <p class="card-subtitle">Opcional. Déjalo vacío para mantener tu contraseña actual.</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="password" class="form-label">Nueva contraseña</label>
+                            <div class="password-field">
+                                <input type="password" class="form-control" id="password" name="password" minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                                <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Mostrar contraseña"><i data-lucide="eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="confirm_password" class="form-label">Confirmar contraseña</label>
+                            <div class="password-field">
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" autocomplete="new-password">
+                                <button type="button" class="password-toggle" data-toggle-password="confirm_password" aria-label="Mostrar contraseña"><i data-lucide="eye"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <a href="/dashboard" class="btn btn-light">Cancelar</a>
+                <button type="submit" class="btn btn-primary"><i data-lucide="check"></i> Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
 `;
 %>
 

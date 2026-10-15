@@ -301,16 +301,29 @@ class Consumo {
         }
     }
 
-    // Obtener estadísticas de consumo
+    // Obtener estadísticas de consumo (fechaFin inclusive)
     static async getStats(userId, fechaInicio, fechaFin) {
         try {
             const result = await pool.query(
-                `SELECT COUNT(DISTINCT dk.clave_doc) AS total_servicios, SUM(dk.salidas) AS total_aplicaciones_consumidas, COUNT(DISTINCT k.id_insumo) AS insumos_diferentes_usados, SUM(CASE WHEN dk.salidas > 0 THEN (SELECT costo_unitario FROM detalle_kardex WHERE id_kardex = dk.id_kardex AND fecha <= dk.fecha ORDER BY fecha DESC LIMIT 1) * dk.salidas ELSE 0 END) AS valor_total_consumido FROM detalle_kardex dk INNER JOIN kardex k ON dk.id_kardex = k.id_kardex INNER JOIN insumos i ON k.id_insumo = i.id_insumo WHERE dk.recepcionado_por = $1 AND dk.salidas > 0 AND dk.fecha >= $2 AND dk.fecha <= $3`,
+                `SELECT COUNT(DISTINCT dk.clave_doc) AS total_servicios, COALESCE(SUM(dk.salidas), 0) AS total_aplicaciones_consumidas, COUNT(DISTINCT k.id_insumo) AS insumos_diferentes_usados, COALESCE(SUM(dk.salidas * dk.costo_unitario), 0) AS valor_total_consumido FROM detalle_kardex dk INNER JOIN kardex k ON dk.id_kardex = k.id_kardex WHERE dk.recepcionado_por = $1 AND dk.salidas > 0 AND dk.fecha >= $2::date AND dk.fecha < ($3::date + 1)`,
                 [userId, fechaInicio, fechaFin]
             );
             return result.rows[0];
         } catch (error) {
             throw new Error(`Error obteniendo estadísticas: ${error.message}`);
+        }
+    }
+
+    // Consumo agrupado por insumo en un período (fechaFin inclusive)
+    static async getConsumoPorInsumo(userId, fechaInicio, fechaFin) {
+        try {
+            const result = await pool.query(
+                `SELECT i.codigo, i.nombre_generico, SUM(dk.salidas) AS aplicaciones, SUM(dk.salidas * dk.costo_unitario) AS valor, COUNT(DISTINCT dk.clave_doc) AS recibos FROM detalle_kardex dk INNER JOIN kardex k ON dk.id_kardex = k.id_kardex INNER JOIN insumos i ON k.id_insumo = i.id_insumo WHERE dk.recepcionado_por = $1 AND dk.salidas > 0 AND dk.fecha >= $2::date AND dk.fecha < ($3::date + 1) GROUP BY i.id_insumo, i.codigo, i.nombre_generico ORDER BY aplicaciones DESC`,
+                [userId, fechaInicio, fechaFin]
+            );
+            return result.rows;
+        } catch (error) {
+            throw new Error(`Error obteniendo consumo por insumo: ${error.message}`);
         }
     }
 }

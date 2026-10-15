@@ -30,27 +30,6 @@ const storageFormularios = multer.diskStorage({
 });
 
 // ============================================
-// CONFIGURACIÓN PARA PACIENTES
-// ============================================
-const storagePacientes = multer.diskStorage({
-  destination: async function (req, file, cb) {
-    const uploadPath = path.join(__dirname, '../public/uploads/pacientes');
-    try {
-      await fs.mkdir(uploadPath, { recursive: true });
-      cb(null, uploadPath);
-    } catch (error) {
-      cb(error);
-    }
-  },
-  filename: function (req, file, cb) {
-    const timestamp = Date.now();
-    const ext = path.extname(file.originalname);
-    const nombreBase = path.basename(file.originalname, ext);
-    cb(null, `${nombreBase}_${timestamp}${ext}`);
-  }
-});
-
-// ============================================
 // FILTRO DE ARCHIVOS DE IMAGEN
 // ============================================
 const imageFileFilter = function (req, file, cb) {
@@ -75,23 +54,9 @@ const uploadFormulario = multer({
 });
 
 // ============================================
-// MIDDLEWARE PARA PACIENTES (Exportado con nombre)
-// ============================================
-const uploadPaciente = multer({
-  storage: storagePacientes,
-  fileFilter: imageFileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB
-  }
-});
-
-// ============================================
 // EXPORTACIÓN CORREGIDA (100% ESM - Exportaciones con nombre)
 // ============================================
 // Esto resuelve el error "does not provide an export named 'uploadFormulario'"
 export {
-  uploadFormulario,
-  uploadPaciente,
-  // Alias para compatibilidad con rutas de proyecciones
-  uploadPaciente as uploadProyeccion
+  uploadFormulario
 };

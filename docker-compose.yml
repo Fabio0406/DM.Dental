@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: dm5-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-sistema_dm5}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+      TZ: America/La_Paz
+      PGTZ: America/La_Paz
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - dm5_pgdata:/var/lib/postgresql/data
+      # Solo se ejecutan cuando el volumen está vacío (primer arranque)
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dm5_pgdata:
