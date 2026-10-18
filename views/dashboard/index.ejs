@@ -26,7 +26,7 @@ const body = `
 
 ${stats ? `
 <div class="row g-3 mb-4">
-    <div class="col-6 col-xl-3">
+    <div class="col-6 col-xl-4">
         <div class="stat-card tone-info">
             <span class="stat-icon"><i data-lucide="package"></i></span>
             <div>
@@ -35,7 +35,7 @@ ${stats ? `
             </div>
         </div>
     </div>
-    <div class="col-6 col-xl-3">
+    <div class="col-6 col-xl-4">
         <div class="stat-card tone-success">
             <span class="stat-icon"><i data-lucide="package-check"></i></span>
             <div>
@@ -44,7 +44,7 @@ ${stats ? `
             </div>
         </div>
     </div>
-    <div class="col-6 col-xl-3">
+    <div class="col-6 col-xl-4">
         <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalAlertasInicio">
             <div class="stat-card ${resumenAlertas.total > 0 ? 'tone-warning' : 'tone-neutral'}">
                 <span class="stat-icon"><i data-lucide="bell-ring"></i></span>
@@ -54,16 +54,6 @@ ${stats ? `
                 </div>
             </div>
         </a>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="stat-card tone-neutral">
-            <span class="stat-icon"><i data-lucide="activity"></i></span>
-            <div>
-                <p class="stat-label">Consumo del mes</p>
-                <p class="stat-value">${stats.consumo_mes}</p>
-                <p class="stat-hint">aplicaciones</p>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -255,6 +245,74 @@ function emptyChart(canvasId, texto) {
     box.classList.remove('chart-box');
 }
 
+// Tooltip con el nombre completo al pasar el mouse por las etiquetas (recortadas) del eje X.
+// Chart.js dibuja las etiquetas en el canvas, así que se detecta el hover por geometría.
+const axisLabelTooltip = {
+    id: 'axisLabelTooltip',
+    afterEvent(chart, args) {
+        const e = args.event;
+        const tip = this.getTip(chart);
+        if (e.type === 'mouseout') { tip.hidden = true; return; }
+        if (e.type !== 'mousemove') return;
+
+        const i = this.hitTick(chart, e.x, e.y);
+        if (i === -1) { tip.hidden = true; chart.canvas.style.cursor = ''; return; }
+
+        const scale = chart.scales.x;
+        tip.textContent = chart.data.labels[scale.ticks[i].value];
+        tip.hidden = false;
+        chart.canvas.style.cursor = 'default';
+        const box = chart.canvas.parentElement;
+        const half = tip.offsetWidth / 2;
+        const left = Math.min(Math.max(e.x, half), box.clientWidth - half);
+        tip.style.left = left + 'px';
+        tip.style.top = (e.y - 10) + 'px';
+    },
+    afterDestroy(chart) {
+        const tip = chart.canvas.parentElement && chart.canvas.parentElement.querySelector('.chart-axis-tip');
+        if (tip) tip.hidden = true;
+    },
+    getTip(chart) {
+        const box = chart.canvas.parentElement;
+        let tip = box.querySelector('.chart-axis-tip');
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'chart-axis-tip';
+            tip.setAttribute('role', 'tooltip');
+            tip.hidden = true;
+            box.appendChild(tip);
+        }
+        return tip;
+    },
+    hitTick(chart, px, py) {
+        const scale = chart.scales.x;
+        if (!scale || py < scale.top || py > scale.bottom) return -1;
+        const font = Chart.helpers.toFont(scale.options.ticks.font);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = font.string;
+        const rot = (scale.labelRotation || 0) * Math.PI / 180;
+        const cos = Math.cos(rot), sin = Math.sin(rot);
+        const anchorY = scale.top + (scale.options.ticks.padding || 0) + font.size / 2;
+        let hit = -1;
+        for (let i = 0; i < scale.ticks.length && hit === -1; i++) {
+            const w = ctx.measureText(String(scale.ticks[i].label)).width;
+            const dx = px - scale.getPixelForTick(i);
+            const dy = py - anchorY;
+            if (rot === 0) {
+                if (Math.abs(dx) <= w / 2 + 4 && Math.abs(dy) <= font.size) hit = i;
+            } else {
+                // Etiqueta alineada a la derecha y rotada: se extiende hacia abajo-izquierda del tick.
+                const along = -dx * cos + dy * sin;
+                const perp = dx * sin + dy * cos;
+                if (along >= -4 && along <= w + 4 && Math.abs(perp) <= font.size * 0.8) hit = i;
+            }
+        }
+        ctx.restore();
+        return hit;
+    }
+};
+
 function renderCharts() {
     charts.forEach(c => c.destroy());
     charts.length = 0;
@@ -285,7 +343,8 @@ function renderCharts() {
                         y: { beginAtZero: true, grid: { color: grid }, border: { display: false } },
                         x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 40, callback: function (v) { const l = this.getLabelForValue(v); return l.length > 14 ? l.slice(0, 13) + '…' : l; } } }
                     }
-                }
+                },
+                plugins: [axisLabelTooltip]
             }));
         } else {
             emptyChart('graficoStockCategoria', 'Aún no hay stock registrado');

@@ -42,7 +42,7 @@ class DashboardController {
         Dashboard.getDetalleInsumosVencer(90)
       ]);
       res.render('dashboard/index', {
-        title: 'Dashboard - Sistema DM-5',
+        title: 'Dashboard - Sistema DM.Dental',
         stats: statsGenerales,
         stockPorCategoria: JSON.stringify(stockPorCategoria),
         tasaDesabastecimiento,
@@ -56,7 +56,7 @@ class DashboardController {
     } catch (error) {
       console.error('Error cargando dashboard:', error);
       res.render('dashboard/index', {
-        title: 'Dashboard - Sistema DM-5',
+        title: 'Dashboard - Sistema DM.Dental',
         stats: null,
         stockPorCategoria: JSON.stringify([]),
         tasaDesabastecimiento: null,

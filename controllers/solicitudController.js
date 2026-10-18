@@ -16,7 +16,7 @@ class SolicitudController {
       const solicitudes = await Solicitud.listarPorUsuario(req.session.userId);
 
       res.render('solicitudes/lista', {
-        title: 'Mis Solicitudes de Pedido - Sistema DM-5',
+        title: 'Mis Solicitudes de Pedido - Sistema DM.Dental',
         solicitudes,
         success: req.session.success || null,
         error: req.session.error || null
@@ -27,7 +27,7 @@ class SolicitudController {
     } catch (error) {
       console.error('Error cargando solicitudes:', error);
       res.render('solicitudes/lista', {
-        title: 'Mis Solicitudes de Pedido - Sistema DM-5',
+        title: 'Mis Solicitudes de Pedido - Sistema DM.Dental',
         solicitudes: [],
         success: null,
         error: 'Error cargando solicitudes'
@@ -41,7 +41,7 @@ class SolicitudController {
       const insumos = await Insumo.findAll();
 
       res.render('solicitudes/nueva', {
-        title: 'Nueva Solicitud de Pedido - Sistema DM-5',
+        title: 'Nueva Solicitud de Pedido - Sistema DM.Dental',
         insumos,
         error: req.session.error || null
       });
@@ -102,7 +102,7 @@ class SolicitudController {
       }
 
       res.render('solicitudes/ver', {
-        title: `Solicitud ${solicitud.nro_solicitud} - Sistema DM-5`,
+        title: `Solicitud ${solicitud.nro_solicitud} - Sistema DM.Dental`,
         solicitud
       });
     } catch (error) {
@@ -133,7 +133,7 @@ class SolicitudController {
       }
 
       res.render('solicitudes/editar', {
-        title: `Editar Solicitud ${solicitud.nro_solicitud} - Sistema DM-5`,
+        title: `Editar Solicitud ${solicitud.nro_solicitud} - Sistema DM.Dental`,
         solicitud,
         insumos,
         error: req.session.error || null

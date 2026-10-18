@@ -9,7 +9,7 @@ class AuthController {
     req.session.success = null;
 
     res.render('auth/login', {
-      title: 'Iniciar Sesión - Sistema DM-5',
+      title: 'Iniciar Sesión - Sistema DM.Dental',
       error,
       success
     });
@@ -21,7 +21,7 @@ class AuthController {
     req.session.error = null;
     
     res.render('auth/register', {
-      title: 'Registrarse - Sistema DM-5',
+      title: 'Registrarse - Sistema DM.Dental',
       error
     });
   };

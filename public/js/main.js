@@ -1,4 +1,4 @@
-// Utilidades compartidas del Sistema DM-5
+// Utilidades compartidas del Sistema DM.Dental
 window.DM5 = (function () {
     const escape = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'

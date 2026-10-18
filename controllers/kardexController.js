@@ -25,7 +25,7 @@ class KardexController {
       }
 
       res.render('kardex/lista', {
-        title: 'Kardex de Insumos - Sistema DM-5',
+        title: 'Kardex de Insumos - Sistema DM.Dental',
         insumos,
         termino,
         error: req.session.error || null
@@ -35,7 +35,7 @@ class KardexController {
     } catch (error) {
       console.error('Error cargando lista de kardex:', error);
       res.render('kardex/lista', {
-        title: 'Kardex de Insumos - Sistema DM-5',
+        title: 'Kardex de Insumos - Sistema DM.Dental',
         insumos: [],
         termino: '',
         error: 'Error cargando datos del kardex'

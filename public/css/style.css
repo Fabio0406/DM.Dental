@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Sistema DM-5 · Sistema de diseño
+   Sistema DM.Dental · Sistema de diseño
    Bootstrap 5.1.3 + tokens propios (modo claro / oscuro)
    --------------------------------------------------------------------------
    1. Tokens          6. Botones          11. Badges
@@ -686,6 +686,25 @@ hr { border-color: var(--border); opacity: 1; }
 }
 .dropzone strong { color: var(--text); }
 
+/* Opción de cámara: solo en pantallas táctiles (celular/tablet) */
+.camera-option { display: none; }
+.only-coarse-pointer { display: none; }
+.or-divider {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 1rem 0;
+    color: var(--muted);
+    font-size: .8125rem;
+}
+.or-divider::before, .or-divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+@media (pointer: coarse) {
+    .camera-option { display: block; }
+    .only-fine-pointer { display: none; }
+    .only-coarse-pointer { display: inline; }
+    .dropzone { padding: 1.5rem 1rem; }
+}
+
 /* 8. Tablas ---------------------------------------------------------------- */
 .table {
     --bs-table-bg: transparent;
@@ -804,6 +823,24 @@ hr { border-color: var(--border); opacity: 1; }
 .meter.danger > span { background: var(--danger); }
 
 .chart-box { position: relative; height: 240px; }
+.chart-axis-tip {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    pointer-events: none;
+    z-index: 5;
+    max-width: 220px;
+    padding: .35rem .6rem;
+    border-radius: 6px;
+    background: var(--text);
+    color: var(--surface);
+    font-size: .75rem;
+    font-weight: 500;
+    line-height: 1.3;
+    text-align: center;
+    white-space: normal;
+    box-shadow: var(--shadow-lg);
+}
+.chart-axis-tip[hidden] { display: none; }
 
 /* 10. Estados vacíos ------------------------------------------------------- */
 .empty-state {

@@ -67,7 +67,7 @@ async function cargarProtocolo(idTipoServicio) {
             insumosConsumo.clear();
             updateTotalAplicaciones();
             updateSubmitButton();
-            setMensaje(emptyState('clipboard-x', 'Este servicio no tiene protocolo', 'Configura los insumos del servicio para poder registrar su consumo.', 'warning'));
+            setMensaje(emptyState('clipboard-x', 'Esta prestación no tiene protocolo', 'Configura los insumos de la prestación para poder registrar su consumo.', 'warning'));
         }
     } catch (error) {
         console.error('Error:', error);
@@ -212,7 +212,7 @@ function mostrarModalRecibo() {
     });
 
     document.getElementById('resumen_consumo').innerHTML =
-        '<div class="text-muted small mb-1">Servicio</div>' +
+        '<div class="text-muted small mb-1">Prestación</div>' +
         '<div class="fw-semibold mb-3">' + esc(servicio) + '</div>' +
         '<div class="border rounded-3 overflow-hidden border-soft">' +
             '<table class="table table-sm mb-0"><thead><tr><th>Insumo</th><th class="text-end">Aplicaciones</th></tr></thead><tbody>' + filas + '</tbody></table>' +
@@ -356,7 +356,7 @@ function mostrarMensajeInicial() {
     updateSubmitButton();
     ocultarAlertaLotesVencidos();
     document.getElementById('disponibilidad_alert').innerHTML = '';
-    setMensaje(emptyState('mouse-pointer-click', 'Selecciona un servicio', 'Los insumos del protocolo aparecerán aquí para que ajustes las cantidades.'));
+    setMensaje(emptyState('mouse-pointer-click', 'Selecciona una prestación', 'Los insumos del protocolo aparecerán aquí para que ajustes las cantidades.'));
 }
 
 // ---------- Sobrantes tras agotar lotes ----------

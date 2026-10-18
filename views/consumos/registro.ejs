@@ -6,7 +6,7 @@ const body = `
     <div>
         <div class="page-eyebrow"><i data-lucide="package-minus" class="icon-sm"></i> Inventario</div>
         <h1 class="page-title">Registrar consumo</h1>
-        <p class="page-subtitle">Elige el servicio realizado y ajusta las aplicaciones de cada insumo según el protocolo.</p>
+        <p class="page-subtitle">Elige la prestación realizada y ajusta las aplicaciones de cada insumo según el protocolo.</p>
     </div>
     <div class="page-actions">
         <a href="/consumos/historial" class="btn btn-light"><i data-lucide="history"></i> Ver historial</a>
@@ -27,9 +27,9 @@ ${success || error ? `
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-lg-5">
-                    <label for="id_tipo_servicio" class="form-label">1. Servicio realizado<span class="req">*</span></label>
+                    <label for="id_tipo_servicio" class="form-label">1. Prestación realizada<span class="req">*</span></label>
                     <select class="form-select form-select-lg" id="id_tipo_servicio" name="id_tipo_servicio" required aria-describedby="servicioHelp">
-                        <option value="">Selecciona un servicio…</option>
+                        <option value="">Selecciona una prestación…</option>
                         ${tiposServicio.map(ts => `<option value="${ts.id_servicio}">${esc(ts.nombre)}</option>`).join('')}
                     </select>
                     <div id="servicioHelp" class="form-text">Se cargarán los insumos y cantidades estándar del protocolo.</div>
@@ -52,7 +52,7 @@ ${success || error ? `
             <div id="protocolo_mensaje">
                 <div class="empty-state">
                     <div class="empty-icon"><i data-lucide="mouse-pointer-click"></i></div>
-                    <h3>Selecciona un servicio</h3>
+                    <h3>Selecciona una prestación</h3>
                     <p>Los insumos del protocolo aparecerán aquí para que ajustes las cantidades.</p>
                 </div>
             </div>

@@ -10,7 +10,7 @@ class TipoServicio {
       console.log(result.rows)
       return result.rows;
     } catch (error) {
-      throw new Error(`Error listando servicios: ${error.message}`);
+      throw new Error(`Error listando prestaciones: ${error.message}`);
     }
   }
 
@@ -23,7 +23,7 @@ class TipoServicio {
       );
       return result.rows[0];
     } catch (error) {
-      throw new Error(`Error buscando servicio: ${error.message}`);
+      throw new Error(`Error buscando prestación: ${error.message}`);
     }
   }
 
@@ -36,7 +36,7 @@ class TipoServicio {
       );
       return result.rows;
     } catch (error) {
-      throw new Error(`Error buscando servicios por categoría: ${error.message}`);
+      throw new Error(`Error buscando prestaciones por categoría: ${error.message}`);
     }
   }
 

@@ -19,7 +19,7 @@ req.session.success = null;
 req.session.lotes_agotados = null;
 
 res.render('consumos/registro', {
-title: 'Registrar Consumo de Insumos - Sistema DM-5',
+title: 'Registrar Consumo de Insumos - Sistema DM.Dental',
 tiposServicio,
 error,
 success,
@@ -40,7 +40,7 @@ const { id } = req.params;
 console.log('Solicitando protocolo para servicio:', id);
 
 if (!id) {
-return res.status(400).json({ error: 'ID de tipo de servicio requerido' });
+return res.status(400).json({ error: 'ID de tipo de prestación requerido' });
 }
 
 const protocolo = await Protocolo.getByTipoServicio(parseInt(id));
@@ -70,7 +70,7 @@ lotes_vencidos: lotesVencidos.length > 0 ? lotesVencidos : null
 
 } catch (error) {
 console.error('Error obteniendo protocolo:', error);
-res.status(500).json({ error: 'Error obteniendo protocolo de servicio' });
+res.status(500).json({ error: 'Error obteniendo protocolo de la prestación' });
 }
 };
 
@@ -129,7 +129,7 @@ const numero_recibo = req.body.numero_recibo;
 
 // Validaciones básicas
 if (!id_tipo_servicio) {
-req.session.error = 'Debe seleccionar un tipo de servicio';
+req.session.error = 'Debe seleccionar una prestación';
 return res.redirect('/consumos/registro');
 }
 
@@ -243,7 +243,7 @@ const { fecha } = req.query;
 const consumos = await Consumo.findByUserAndDate(req.session.userId, fecha);
 
 res.render('consumos/historial', {
-title: 'Historial de Consumos - Sistema DM-5',
+title: 'Historial de Consumos - Sistema DM.Dental',
 consumos,
 fechaFiltro: fecha || null
 });
@@ -251,7 +251,7 @@ fechaFiltro: fecha || null
 } catch (error) {
 console.error('Error cargando historial:', error);
 res.render('consumos/historial', {
-title: 'Historial de Consumos - Sistema DM-5',
+title: 'Historial de Consumos - Sistema DM.Dental',
 consumos: [],
 error: 'Error cargando historial'
 });
@@ -296,7 +296,7 @@ Consumo.getConsumoPorInsumo(req.session.userId, isoLocal(fechaInicio), isoLocal(
 ]);
 
 res.render('consumos/estadisticas', {
-title: 'Estadísticas de Consumo - Sistema DM-5',
+title: 'Estadísticas de Consumo - Sistema DM.Dental',
 stats,
 porInsumo,
 dias,
@@ -307,7 +307,7 @@ periodo: `${fechaInicio.toLocaleDateString('es-BO')} – ${fechaFin.toLocaleDate
 } catch (error) {
 console.error('Error cargando estadísticas:', error);
 res.render('consumos/estadisticas', {
-title: 'Estadísticas de Consumo - Sistema DM-5',
+title: 'Estadísticas de Consumo - Sistema DM.Dental',
 stats: null,
 porInsumo: [],
 dias,

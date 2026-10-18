@@ -26,9 +26,21 @@ const body = `
         <div class="card">
             <div class="card-body p-4">
                 <form method="POST" action="/ocr/upload" enctype="multipart/form-data" id="uploadForm" data-loading="Subiendo…">
+                    <!-- Solo en celulares/tablets: abre la cámara trasera directamente -->
+                    <div class="camera-option">
+                        <label for="formularioCamara" class="btn btn-primary btn-lg w-100">
+                            <i data-lucide="camera"></i> Tomar foto del formulario
+                        </label>
+                        <input type="file" class="visually-hidden" id="formularioCamara" accept="image/jpeg,image/png,image/webp" capture="environment">
+                        <div class="or-divider">o</div>
+                    </div>
+
                     <label for="formulario" class="dropzone" id="dropzone">
                         <span class="dropzone-icon"><i data-lucide="image-up" class="icon-lg"></i></span>
-                        <strong>Arrastra la imagen aquí o haz clic para seleccionarla</strong>
+                        <strong>
+                            <span class="only-fine-pointer">Arrastra la imagen aquí o haz clic para seleccionarla</span>
+                            <span class="only-coarse-pointer">Elegir una imagen de la galería</span>
+                        </strong>
                         <span class="small">JPG, PNG o WEBP · máximo 10 MB</span>
                         <input type="file" class="visually-hidden" id="formulario" name="formulario" accept="image/jpeg,image/png,image/webp" required>
                     </label>
@@ -61,40 +73,99 @@ const body = `
 <script>
 (function () {
     const input = document.getElementById('formulario');
+    const camara = document.getElementById('formularioCamara');
     const zone = document.getElementById('dropzone');
     const preview = document.getElementById('imagePreview');
     const submit = document.getElementById('submitBtn');
     const MAX = 10 * 1024 * 1024;
+    const TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
+    const LADO_MAX = 3000; // px; suficiente para que el OCR lea el formulario
+
+    // Las fotos de algunos celulares superan los 10 MB: se reducen en el navegador
+    // a JPEG antes de subirlas. La orientación EXIF la respeta el <img> al dibujarse.
+    function reducir(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                const escala = Math.min(1, LADO_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.naturalWidth * escala);
+                canvas.height = Math.round(img.naturalHeight * escala);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                const punto = file.name.lastIndexOf('.');
+                const nombre = (punto > 0 ? file.name.slice(0, punto) : file.name) + '.jpg';
+                const exportar = calidad => canvas.toBlob(blob => {
+                    if (!blob) return reject(new Error('No se pudo comprimir'));
+                    if (blob.size > MAX && calidad > 0.6) return exportar(calidad - 0.15);
+                    resolve(new File([blob], nombre, { type: 'image/jpeg' }));
+                }, 'image/jpeg', calidad);
+                exportar(0.9);
+            };
+            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Imagen no válida')); };
+            img.src = url;
+        });
+    }
+
+    // Todo archivo (galería, cámara o arrastrado) termina en el input "formulario", que es el que se envía.
+    function asignar(file) {
+        try {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function seleccionar(file) {
+        if (!file) { limpiar(); return; }
+        if (!TIPOS.includes(file.type)) { DM5.toast('Formato no válido. Usa JPG, PNG o WEBP', 'warning'); limpiar(); return; }
+        submit.disabled = true;
+        if (file.size > MAX) {
+            try {
+                file = await reducir(file);
+            } catch (e) {
+                DM5.toast('No se pudo procesar la foto. Intenta de nuevo', 'danger'); limpiar(); return;
+            }
+            if (file.size > MAX) { DM5.toast('La imagen supera los 10 MB', 'warning'); limpiar(); return; }
+        }
+        if (input.files[0] !== file && !asignar(file)) {
+            DM5.toast('Tu navegador no permite usar esta imagen. Elígela desde la galería', 'warning'); limpiar(); return;
+        }
+        camara.value = '';
+        mostrar(file);
+    }
 
     function mostrar(file) {
-        if (!file) { limpiar(); return; }
-        if (file.size > MAX) { DM5.toast('La imagen supera los 10 MB', 'warning'); limpiar(); return; }
         const reader = new FileReader();
         reader.onload = e => {
             document.getElementById('previewImg').src = e.target.result;
             document.getElementById('fileName').textContent = file.name;
             preview.style.display = 'block';
             submit.disabled = false;
+            preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         };
         reader.readAsDataURL(file);
     }
 
     function limpiar() {
         input.value = '';
+        camara.value = '';
         preview.style.display = 'none';
         submit.disabled = true;
     }
 
-    input.addEventListener('change', () => mostrar(input.files[0]));
+    input.addEventListener('change', () => seleccionar(input.files[0]));
+    camara.addEventListener('change', () => seleccionar(camara.files[0]));
     document.getElementById('clearFile').addEventListener('click', limpiar);
 
     ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('is-dragover'); }));
     ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('is-dragover'); }));
     zone.addEventListener('drop', e => {
-        if (e.dataTransfer.files.length) {
-            input.files = e.dataTransfer.files;
-            mostrar(input.files[0]);
-        }
+        if (e.dataTransfer.files.length) seleccionar(e.dataTransfer.files[0]);
     });
 })();
 </script>

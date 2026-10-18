@@ -19,7 +19,7 @@ class UserController {
       req.session.error = null;
 
       res.render('users/profile', {
-        title: 'Mi Perfil - Sistema DM-5',
+        title: 'Mi Perfil - Sistema DM.Dental',
         user,
         success,
         error

@@ -91,7 +91,7 @@ class OCRController {
     const success = req.session.success || null;
     req.session.error = null;
     req.session.success = null;
-    res.render('ocr/upload', { title: 'Escanear Formulario SALMI - Sistema DM-5', error, success });
+    res.render('ocr/upload', { title: 'Escanear Formulario SALMI - Sistema DM.Dental', error, success });
   };
 
   // POST /ocr/upload
@@ -173,7 +173,7 @@ class OCRController {
       try { avisos = formulario.avisos_ocr ? JSON.parse(formulario.avisos_ocr) : []; } catch (e) { avisos = []; }
 
       res.render('ocr/review', {
-        title: 'Revisar Formulario SALMI - Sistema DM-5',
+        title: 'Revisar Formulario SALMI - Sistema DM.Dental',
         formulario,
         items,
         insumos,
@@ -196,10 +196,10 @@ class OCRController {
       const flash = { success: req.session.success || null, error: req.session.error || null };
       req.session.success = null;
       req.session.error = null;
-      res.render('ocr/list', { title: 'Formularios SALMI - Sistema DM-5', formularios, ...flash });
+      res.render('ocr/list', { title: 'Formularios SALMI - Sistema DM.Dental', formularios, ...flash });
     } catch (error) {
       console.error('Error listando formularios:', error);
-      res.render('ocr/list', { title: 'Formularios SALMI - Sistema DM-5', formularios: [], error: 'Error cargando formularios' });
+      res.render('ocr/list', { title: 'Formularios SALMI - Sistema DM.Dental', formularios: [], error: 'Error cargando formularios' });
     }
   };
 
